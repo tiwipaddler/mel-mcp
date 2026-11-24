@@ -1,0 +1,22 @@
+# Exact versions this project was tested with (Python 3.11).
+# Install:  pip install -r requirements.txt && pip install -e . --no-deps
+mcp==1.30.0
+chromadb==1.5.9
+sentence-transformers==2.7.0
+transformers==4.57.6
+pypdf==6.12.2
+duckdb==2.0.0
+pandas==3.0.6
+python-dotenv==1.2.2
+langgraph==1.2.24
+
+# torch 2.2.x is the last release for Intel Macs, and it needs numpy below 2.
+# On other machines you can usually remove these two pins.
+torch==2.2.2
+numpy==1.26.4
+
+# Optional: Claude-written drift summaries
+anthropic==0.125.0
+# Optional: tests and formatting
+pytest
+ruff
