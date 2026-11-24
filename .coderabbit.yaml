@@ -1,0 +1,48 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: "en-US"
+tone_instructions: "Be direct and specific, in plain English. Say why each change matters."
+
+reviews:
+  profile: "assertive"
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  path_filters:
+    - "!examples/*.md"
+  path_instructions:
+    - path: "src/**/*.py"
+      instructions: |
+        Review for readability and maintainability as well as bugs. Flag:
+        - comments that only restate the code, and docstrings that only repeat the function name
+        - dead code, unused parameters, and compatibility shims that nothing calls any more
+        - functions that do several jobs and would be clearer split up
+        - duplicated logic, and names that don't say what something is
+        Don't ask for docstrings on small private helpers.
+    - path: "src/mel_mcp/server.py"
+      instructions: |
+        Tool docstrings, Field descriptions, INSTRUCTIONS and prompt text are read by the AI
+        model and steer how it uses the tools. Don't suggest shortening them for style. Do flag
+        text that is wrong, contradicts another tool's text, or promises something the code
+        doesn't do. Every tool must stay read-only and go through call() so it is audit-logged.
+    - path: "src/mel_mcp/prompts.py"
+      instructions: |
+        Prompt text is read by the AI model as instructions. Flag steps that contradict the
+        tool descriptions in server.py or ask for something no tool provides.
+    - path: "src/mel_mcp/surveys.py"
+      instructions: |
+        Privacy rules that must hold: no individual rows are ever returned; variables with role
+        id or exclude are never queried, listed or profiled; groups smaller than min_cell_size
+        are suppressed without revealing their size. Column names reach SQL only through _quote()
+        on names from the data dictionary, and values only as query parameters.
+    - path: "src/mel_mcp/indicators.py"
+      instructions: |
+        Indicator figures reach the model as evidence. Every check that makes a period
+        unusable or adds a caution needs a test, and the messages must say what to do.
+    - path: "tests/**/*.py"
+      instructions: |
+        Tests must run without network access, API keys or model downloads. Check that they test
+        behaviour a user would notice, not internal details.
+
+chat:
+  auto_reply: true

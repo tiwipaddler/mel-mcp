@@ -1,0 +1,22 @@
+# Settings and secrets
+.env
+venv/
+.venv/
+
+# Documents and data: download from the original sources (see data_sources.md)
+docs/
+data/
+
+# Generated
+db/
+reports/
+logs/
+*.egg-info/
+build/
+dist/
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+*.patch
+*.patch
