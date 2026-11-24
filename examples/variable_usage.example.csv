@@ -1,0 +1,4 @@
+reader,dataset,variable
+EXAMPLE indicator 1.1: average maize yield,,yield_kg
+EXAMPLE indicator 2.3: share of households using fertiliser,,used_fert
+EXAMPLE analysis/03_regression.R,,county
