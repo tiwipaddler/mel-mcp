@@ -6,6 +6,24 @@ Built for monitoring, evaluation and learning (MEL) teams. Runs on your own comp
 
 **What an answer looks like:** [examples/kenya-agriculture-delays.md](examples/kenya-agriculture-delays.md) answers *"What are the most common reasons Kenyan agriculture projects reported delays or missed targets since 2020, and do the indicators show the shortfalls?"* from public IATI data. It groups the reasons into themes with cited examples, shows which donors report each theme, checks every tracker figure against the reports, and grades how strong the evidence is.
 
+## Quick start
+
+On macOS or Linux, with Python 3.11 or 3.12 installed:
+
+```bash
+git clone https://github.com/tiwipaddler/mel-mcp.git
+cd mel-mcp
+./setup.sh --starter
+```
+
+This installs everything, runs the tests and loads the Kenya starter pack: about 25 real reports from Kenyan agriculture projects since 2020, downloaded from their publishers, and those projects' indicator data. Indexing the reports takes from a few minutes on a recent laptop to about half an hour on an older one; the progress shows the time left.
+
+Then connect your assistant ([step 6](#6-connect-an-assistant)) and ask:
+
+> What are the most common reasons Kenyan agriculture projects reported delays or missed targets since 2020, and do the indicators show the shortfalls?
+
+When you're ready for your own data, see [step 3](#3-load-your-data).
+
 ---
 
 ## Contents
@@ -49,24 +67,40 @@ You can load any of three kinds of evidence, and you don't need all of them:
 
 ## 2. Install
 
-Run these in a terminal. The commands are for macOS and Linux.
+From a terminal on macOS or Linux:
 
 ```bash
 git clone https://github.com/tiwipaddler/mel-mcp.git
 cd mel-mcp
+./setup.sh
+```
+
+`setup.sh` finds Python 3.11 or 3.12, creates a private Python environment in a folder called `venv`, installs the packages, creates your settings file (`.env`), runs the tests and downloads the search model (about 400 MB). If anything is missing, it stops and says what to install. It is safe to run again, and it never replaces your `.env` or your data. Add `--starter` to also load the Kenya starter pack.
+
+After setup, **in every new terminal window**, activate the environment before using any `mel-*` command:
+
+```bash
+cd mel-mcp
+source venv/bin/activate
+```
+
+Your prompt shows `(venv)` when it is active. The rest of this guide assumes you are in the `mel-mcp` folder with the environment active; check with `pwd`, which should end in `/mel-mcp`.
+
+On Windows, use WSL (Windows Subsystem for Linux) and run the same commands there.
+
+<details>
+<summary>Installing by hand instead</summary>
+
+```bash
 python3.11 -m venv venv
 source venv/bin/activate
-
 pip install -r requirements.txt     # the exact versions this was tested with
 pip install -e . --no-deps          # adds the mel-* commands
 cp .env.example .env
+pytest -q
 ```
 
-- `python3.11 -m venv venv` makes a private Python environment in a folder called `venv`, so this project's packages don't clash with anything else on your computer.
-- `source venv/bin/activate` switches to that environment. **Run it again in every new terminal window** before using any `mel-*` command. Your prompt shows `(venv)` when it is active.
-- `.env` holds your settings. `ls` doesn't show files starting with a dot; use `ls -a`.
-
-The rest of this guide assumes you are in the `mel-mcp` folder with the environment active. Check with `pwd`, which should end in `/mel-mcp`.
+</details>
 
 ### Settings (`.env`)
 
@@ -94,6 +128,8 @@ Never put real API keys in `.env.example`, which is shared on GitHub. `.env` is 
 ## 3. Load your data
 
 Pick the parts you need. You can use your own files, public IATI data, or both.
+
+If you loaded the starter pack, its files are in `docs/`, `data/` and `db/`. To add your own data alongside it, follow the steps below as they are. To start again with only your own data, delete those folders first with `rm -rf docs data db`.
 
 ### 3a. Reports (your own files)
 
@@ -222,7 +258,7 @@ Survey data and the indicator tracker don't need indexing.
    pytest -q
    ```
 
-   Expect `112 passed`.
+   Expect `125 passed`.
 
 2. **Search from the terminal**, to check your reports were indexed:
 
@@ -244,37 +280,40 @@ Survey data and the indicator tracker don't need indexing.
 
 ## 6. Connect an assistant
 
-Replace `/FULL/PATH/TO/mel-mcp` below with your project folder's full path. Run `pwd` in the project folder to find it.
-
-### Claude Code (recommended)
-
-Register the server once:
+The server works with any assistant that can start a local MCP server on your computer (a "stdio" server). Each assistant keeps its settings in a different place, so the project includes a command that prints the right settings for yours, with your paths already filled in:
 
 ```bash
-claude mcp add --env MEL_HOME=/FULL/PATH/TO/mel-mcp --transport stdio --scope user mel-evidence \
-  -- /FULL/PATH/TO/mel-mcp/venv/bin/mel-mcp-server
-claude mcp list
+mel-mcp-config cursor
 ```
 
-`claude mcp list` should show `mel-evidence` as connected. `--scope user` makes it available in every folder, and `MEL_HOME` tells the server where your `.env` and data are. Keep the options in this order: `--env` accepts several values, so the server name can't come straight after it, and everything after `--` is the command that starts the server.
+It prints where the settings go, then the settings to copy. Use the name for your assistant:
 
-Then **start Claude Code from a different, empty folder**, not from inside `mel-mcp`:
+| Assistant | Name to use | What you do with the output |
+|---|---|---|
+| Claude Code | `claude-code` | Run the printed command |
+| Codex CLI and the ChatGPT desktop app (they share settings) | `codex` | Run the printed command |
+| Claude Desktop | `claude-desktop` | Paste into its config file, then restart it |
+| Cursor | `cursor` | Paste into `~/.cursor/mcp.json` |
+| VS Code (Copilot Chat, agent mode) | `vscode` | Paste into `.vscode/mcp.json` in the folder you open |
+| Gemini CLI | `gemini` | Paste into `~/.gemini/settings.json` |
+| LM Studio (models running on your computer) | `lm-studio` | Paste into its `mcp.json` (Program tab, Edit mcp.json) |
+| Anything else | `other` | Give your assistant the command and `MEL_HOME` setting shown |
+
+If a settings file already lists other servers, add the `mel-evidence` entry next to them rather than replacing the file. After changing settings, restart the assistant or start a new session.
+
+**Start coding assistants from a separate folder.** Claude Code, Codex, Gemini CLI, Cursor and VS Code can read the files in the folder they are opened in. Open them in an empty folder, not in `mel-mcp`, so they can only reach your data through the server's tools, which apply the privacy and data-quality rules:
 
 ```bash
 mkdir -p ~/mel-chat
 cd ~/mel-chat
-claude
+claude          # or codex, gemini; or open this folder in Cursor or VS Code
 ```
 
-Claude Code can read files in the folder it starts in. Starting outside the project means it can only reach your data through the server's tools, which apply the privacy and data-quality rules. Inside a session, type `/mcp` to check the server's status.
+**Check it's connected.** In Claude Code, Codex and Gemini CLI, type `/mcp` to see the server and its tools. In the other apps, look for `mel-evidence` in the tools or MCP list. If it shows as failed, see [Troubleshooting](#9-troubleshooting).
 
-### Claude Desktop
+**Which model to use.** The answers depend on the model following several steps and long tool descriptions. It was built and tested with Claude. Other strong tool-using models should work. Small local models often skip steps or run out of context; in LM Studio, choose a model that supports tool use and give it a long context (at least 16,000 tokens).
 
-Open the config file (on macOS, `~/Library/Application Support/Claude/claude_desktop_config.json`; on Windows, `%APPDATA%\Claude\claude_desktop_config.json`), add the server using the template in `examples/claude_desktop_config.example.json` with your full paths, and restart Claude Desktop.
-
-### Other assistants
-
-Any MCP client that can start a local (stdio) server works. Give it the command `/FULL/PATH/TO/mel-mcp/venv/bin/mel-mcp-server` and the environment variable `MEL_HOME=/FULL/PATH/TO/mel-mcp`.
+**Web chat apps can't use it yet.** claude.ai, ChatGPT on the web and similar apps can only connect to servers hosted on the internet, and this server runs on your computer. Use one of the apps above.
 
 ---
 
@@ -306,6 +345,8 @@ In Claude Code, prompts are slash commands. **Claude Code splits arguments at sp
 
 Typing `/` shows the available prompts. In Claude Desktop, choose prompts from the + menu and fill in each argument.
 
+Not every assistant shows MCP prompts. If yours doesn't, the tools still work: ask in plain language, or paste the steps from `EVIDENCE_STEPS` in `src/mel_mcp/prompts.py` before your question.
+
 ### Reading the answers
 
 - **Citations** give the title, page (where the file has page numbers), study phase, year and sample size (n). Reports from IATI usually have no sample size.
@@ -332,7 +373,7 @@ tail -20 logs/audit.jsonl
 | Added a survey round | `mel-prepare-survey ...`, review its dictionary, optionally `mel-drift` | Start a new session |
 | Edited `data/indicators.csv` | Nothing | It's read fresh on every question |
 | Changed `EMBEDDING_MODEL`, `CHUNK_SIZE` or `CHUNK_OVERLAP` | `mel-ingest` (it rebuilds everything automatically) | Start a new session |
-| Updated this project's code | `pip install -e . --no-deps`, `pytest -q` | Start a new session |
+| Updated this project's code (`git pull`) | `./setup.sh` | Start a new session |
 
 **Why a new session?** Each assistant session starts its own copy of the server, which keeps the search index it opened at the start. Close the session and start a new one to see changes.
 
@@ -351,7 +392,8 @@ tail -20 logs/audit.jsonl
 | `Too many open files` when running tests (macOS) | Run `ulimit -n 1024` in that terminal, then `pytest -q` again |
 | A report never comes up in searches | It may be a scanned PDF with no text, or missing from the manifest. Check with `mel-search` and its title |
 | The assistant can't see new reports or fixes | Start a new assistant session (see step 8) |
-| `claude mcp list` shows the server as failed | Check that the path to `venv/bin/mel-mcp-server` is complete and correct, and that `pytest -q` passes |
+| The assistant shows the server as failed | Run `mel-mcp-config <assistant>` again and check your settings match it exactly, including the full path to `venv/bin/mel-mcp-server`. Check that `pytest -q` passes |
+| The assistant never uses the tools | Name them in your question ("Using the mel-evidence tools, ..."). With a local model, choose one that supports tool use |
 | A prompt got only part of your question | Claude Code splits prompt arguments at spaces. Type single words (`Kenya 2020`) and give the question when asked |
 
 ---
@@ -439,6 +481,9 @@ plan ─► detect ─┬─ nothing changed ─► record_all_clear ─► END
 | `mel-prepare-iati` | IATI XML file → indicator tracker and report list |
 | `mel-download-docs` | Downloads the listed reports (PDF and .odt) and adds them to the manifest |
 | `mel-drift` | Runs the drift agent once |
+| `mel-mcp-config <assistant>` | Prints the settings that connect an assistant (step 6) |
+| `mel-starter load` | Downloads the Kenya starter pack's reports and indexes them (`setup.sh --starter` runs it) |
+| `mel-starter build` | Maintainers: rebuilds the starter pack from your own manifest and tracker |
 
 Every command accepts `--help`.
 
@@ -458,18 +503,22 @@ src/mel_mcp/
 ├── audit.py           audit log
 ├── server.py          the MCP server: tools and resources
 ├── prompts.py         the ready-made prompts
+├── client_config.py   settings for connecting each assistant
+├── starter.py         loading and building the starter pack
 ├── agents/
 │   └── drift_agent.py LangGraph drift agent
 └── ingest.py, search.py, prepare_survey.py, prepare_iati.py, fetch_iati.py,
     download_docs.py   commands
-tests/                 112 tests, synthetic data only
+tests/                 125 tests, synthetic data only
+starter/               the Kenya starter pack: report list and indicator data
+setup.sh               one-step setup
 examples/              templates and an example answer
 data_sources.md        public documents and datasets to try it with
 ```
 
 ### Tests
 
-`pytest -q` runs 112 tests without API keys, model downloads or network access, using a fake search model and synthetic data with planted problems. They cover search filters and citations; that names, phone numbers and IDs can never be queried; small-group suppression; query timeouts; drift detection; the audit log; IATI fetching against a fake API; downloading reports; incremental indexing; OpenDocument files; country spellings; indicator data checks and cautions; and the server through a real MCP client session.
+`pytest -q` runs 125 tests without API keys, model downloads or network access, using a fake search model and synthetic data with planted problems. They cover search filters and citations; that names, phone numbers and IDs can never be queried; small-group suppression; query timeouts; drift detection; the audit log; IATI fetching against a fake API; downloading reports; incremental indexing; OpenDocument files; country spellings; indicator data checks and cautions; and the server through a real MCP client session.
 
 Code style is set by ruff. Before opening a pull request, run `ruff format` and `ruff check` from the project folder.
 
