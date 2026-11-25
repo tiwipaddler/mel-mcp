@@ -139,5 +139,32 @@ def test_missingness_on_few_answers_gives_no_percentages(engine, monkeypatch):
         },
     }
     monkeypatch.setattr(engine, "profile", lambda name: profiles[name])
+    monkeypatch.setattr(engine, "dictionary", lambda name: [{"variable": "x", "role": "measure"}])
     [finding] = drift.compare(engine, "a", "b")["findings"]
     assert finding["type"] == "missingness_jump" and "%" not in finding["detail"]
+
+
+@pytest.mark.parametrize("roles", [("group", "exclude"), ("exclude", "group"), ("measure", "id")])
+def test_a_variable_private_in_either_round_is_left_out(engine, monkeypatch, roles):
+    def dictionary(name):
+        role = roles[0] if name == "a" else roles[1]
+        return [{"variable": "village", "role": role}]
+
+    def profile(name):
+        role = roles[0] if name == "a" else roles[1]
+        if role not in ("group", "measure"):
+            return {}  # profile() never includes private variables
+        return {
+            "village": {
+                "role": role,
+                "label": "Village name",
+                "type": "VARCHAR",
+                "n": 50,
+                "missing_share": 0.0,
+            }
+        }
+
+    monkeypatch.setattr(engine, "dictionary", dictionary)
+    monkeypatch.setattr(engine, "profile", profile)
+    result = json.dumps(drift.compare(engine, "a", "b"))
+    assert "village" not in result and "Village name" not in result

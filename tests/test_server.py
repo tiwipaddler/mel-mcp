@@ -275,3 +275,14 @@ async def test_evidence_summary_takes_a_start_year(server):
             .content.text
         )
         assert "'What' isn't a year" in text and "year_from=" not in text
+
+
+@pytest.mark.anyio
+async def test_old_drift_reports_are_not_served(server, prepared_data):
+    prepared_data.reports_dir.mkdir(parents=True, exist_ok=True)
+    (prepared_data.reports_dir / "drift_20250101-000000.md").write_text(
+        "# Survey drift report\n\n| high | a → b | `respondent_name` | removed |\n"
+    )
+    async with create_connected_server_and_client_session(server) as client:
+        latest = (await client.read_resource("mel://drift/latest")).contents[0].text
+    assert "respondent_name" not in latest and "older version" in latest

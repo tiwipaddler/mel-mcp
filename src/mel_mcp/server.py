@@ -376,7 +376,15 @@ def register_resources(mcp: FastMCP, backend: Backend) -> None:
             info = json.loads(last_run.read_text(encoding="utf-8"))
             header = f"Last checked: {info['checked_at']} (status: {info['status']})\n\n"
         report = drift.latest_report(s.reports_dir)
-        return header + (report.read_text(encoding="utf-8") if report else "No drift reports yet.")
+        if not report:
+            return header + "No drift reports yet."
+        text = report.read_text(encoding="utf-8")
+        if drift.PUBLIC_ONLY not in text:
+            return header + (
+                "The latest drift report was made by an older version that could name private "
+                "variables, so it isn't shown. Run mel-drift to make a new one."
+            )
+        return header + text
 
 
 def create_server(

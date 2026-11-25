@@ -14,6 +14,9 @@ from mel_mcp.surveys import SurveyData
 SEVERITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 UNIT_CHANGE_RATIO = 5.0  # a mean 5x larger or smaller suggests a unit change
 MISSINGNESS_JUMP = 0.2  # 20 percentage points more (or fewer) missing answers
+PRIVATE_ROLES = ("id", "exclude")
+# Written into every report. Reports without it predate the privacy rules and aren't served.
+PUBLIC_ONLY = "Covers group and measure variables only."
 
 
 def _is_numeric(col_type: str | None) -> bool:
@@ -54,8 +57,19 @@ def _finding(kind: str, severity: str, variable: str, detail: str, **evidence) -
 
 
 def compare(engine: SurveyData, earlier: str, later: str) -> dict:
-    """Compare two datasets' group and measure variables (see SurveyData.profile)."""
-    a, b = engine.profile(earlier), engine.profile(later)
+    """Compare two datasets' group and measure variables (see SurveyData.profile).
+
+    A variable marked id or exclude in either round is left out of both, so reclassifying
+    a variable as private can't make it show up as removed or added.
+    """
+    private = {
+        v["variable"]
+        for name in (earlier, later)
+        for v in engine.dictionary(name)
+        if v["role"] in PRIVATE_ROLES
+    }
+    a = {k: v for k, v in engine.profile(earlier).items() if k not in private}
+    b = {k: v for k, v in engine.profile(later).items() if k not in private}
 
     def present(profiles):  # variables that actually exist in the data
         return {k for k, v in profiles.items() if not v.get("absent")}

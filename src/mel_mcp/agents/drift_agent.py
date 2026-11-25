@@ -189,6 +189,8 @@ def write_report(state: DriftState, reports_dir: Path) -> Path:
     lines = [
         f"# Survey drift report ({stamp} UTC)",
         "",
+        drift.PUBLIC_ONLY,
+        "",
         "## Summary",
         "",
         state["summary"],
