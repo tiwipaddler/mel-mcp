@@ -3,6 +3,7 @@
 import io
 import zipfile
 
+import pytest
 from conftest import FakeEmbedder
 from test_ingest import CountingEmbedder, make_pdf
 
@@ -158,3 +159,17 @@ def test_odt_files_are_indexed_and_broken_files_are_skipped(mel_settings, monkey
 
     ingest.main([])  # the broken file is tried again; the others are not re-embedded
     assert "broken.odt: could not be read" in capsys.readouterr().out
+
+
+def test_a_page_break_inside_a_paragraph_splits_it(tmp_path):
+    path = tmp_path / "split.odt"
+    write_odt(path, "<text:p>End of page one<text:soft-page-break/>start of page two</text:p>")
+    pages = load_odt(path, {"title": "Split"})
+    assert [p.text for p in pages] == ["End of page one", "start of page two"]
+
+
+def test_files_encoding_huge_runs_of_spaces_are_refused(tmp_path):
+    path = tmp_path / "bomb.odt"
+    write_odt(path, "<text:p>a<text:s text:c='999999999'/>b</text:p>")
+    with pytest.raises(ValueError, match="too many spaces"):
+        load_odt(path, {"title": "Bomb"})

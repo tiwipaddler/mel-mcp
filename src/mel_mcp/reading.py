@@ -85,42 +85,64 @@ _TEXT = "{urn:oasis:names:tc:opendocument:xmlns:text:1.0}"
 _TABLE = "{urn:oasis:names:tc:opendocument:xmlns:table:1.0}"
 _OFFICE = "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}"
 MAX_ODT_XML = 50 * 1024 * 1024
+# <text:s text:c="n"/> stands for n spaces. A crafted file could ask for billions, so the
+# spaces expanded across one document are capped.
+MAX_ODT_SPACES = 1_000_000
+PAGE_BREAK = "\f"  # marks a soft page break inside a paragraph; XML text can't contain it
 PAGE_UNKNOWN = "-"  # page_label for documents without page information
 
 
-def _inline_text(element) -> str:
+class _SpaceBudget:
+    def __init__(self, limit: int = MAX_ODT_SPACES):
+        self.left = limit
+
+    def take(self, count: str | None) -> str:
+        n = int(count) if count and count.isdigit() else 1
+        self.left -= n
+        if self.left < 0:
+            raise ValueError("the file encodes too many spaces to read safely")
+        return " " * n
+
+
+def _inline_text(element, budget: _SpaceBudget) -> str:
     """The text of a paragraph, honouring ODT's encoded spaces, tabs and line breaks."""
     parts = [element.text or ""]
     for child in element:
         if child.tag == _TEXT + "s":
-            parts.append(" " * int(child.get(_TEXT + "c", "1")))
+            parts.append(budget.take(child.get(_TEXT + "c")))
         elif child.tag == _TEXT + "tab":
             parts.append("\t")
         elif child.tag == _TEXT + "line-break":
             parts.append("\n")
-        elif child.tag not in (_TEXT + "soft-page-break", _TEXT + "note"):
-            parts.append(_inline_text(child))
+        elif child.tag == _TEXT + "soft-page-break":
+            parts.append(PAGE_BREAK)
+        elif child.tag != _TEXT + "note":
+            parts.append(_inline_text(child, budget))
         parts.append(child.tail or "")
     return "".join(parts)
 
 
-def _odt_blocks(element, out: list) -> None:
+def _odt_blocks(element, out: list, budget: _SpaceBudget) -> None:
     """Paragraphs, headings and tables in reading order; None marks a page break."""
     for child in element:
         if child.tag == _TEXT + "soft-page-break":
             out.append(None)
         elif child.tag in (_TEXT + "p", _TEXT + "h"):
-            if child.find(f".//{_TEXT}soft-page-break") is not None:
-                out.append(None)
-            text = _inline_text(child).strip()
-            if text:
-                out.append(text)
+            # A page break inside a paragraph splits it: the text before it is on one page.
+            for i, piece in enumerate(_inline_text(child, budget).split(PAGE_BREAK)):
+                if i:
+                    out.append(None)
+                if piece.strip():
+                    out.append(piece.strip())
         elif child.tag == _TABLE + "table":
             # Keep the table's shape: one line per row, cells separated by " | ".
             rows = []
             for row in child.iter(_TABLE + "table-row"):
                 cells = [
-                    " ".join(_inline_text(p).strip() for p in cell.iter(_TEXT + "p")).strip()
+                    " ".join(
+                        _inline_text(p, budget).replace(PAGE_BREAK, " ").strip()
+                        for p in cell.iter(_TEXT + "p")
+                    ).strip()
                     for cell in row.findall(_TABLE + "table-cell")
                 ]
                 if any(cells):
@@ -128,7 +150,7 @@ def _odt_blocks(element, out: list) -> None:
             if rows:
                 out.append("\n".join(rows))
         else:  # lists, sections, frames: look inside
-            _odt_blocks(child, out)
+            _odt_blocks(child, out, budget)
 
 
 def load_odt(path: Path, doc_meta: dict) -> list[Chunk]:
@@ -147,7 +169,7 @@ def load_odt(path: Path, doc_meta: dict) -> list[Chunk]:
     body = root.find(f"{_OFFICE}body/{_OFFICE}text")
     blocks: list = []
     if body is not None:
-        _odt_blocks(body, blocks)
+        _odt_blocks(body, blocks, _SpaceBudget())
 
     pages: list[list[str]] = [[]]
     for block in blocks:
