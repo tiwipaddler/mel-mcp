@@ -118,3 +118,23 @@ def test_filters_reject_unknown_fields_and_match_manifest(manifest_file):
     meta = load_manifest(manifest_file)["endline.pdf"]
     assert matches(meta, {"country": "Kenya"}, 2022, None)
     assert not matches(meta, {"study_phase": "midline"}, None, None)
+
+
+def test_pdf_page_labels_are_kept(tmp_path):
+    # Reports often number their front pages i, ii, iii before page 1.
+    from pypdf import PdfReader, PdfWriter
+    from test_ingest import make_pdf
+
+    from mel_mcp.reading import load_pdf
+
+    plain = tmp_path / "plain.pdf"
+    make_pdf(plain, ["Contents", "Introduction", "Findings"])
+    writer = PdfWriter(clone_from=PdfReader(plain))
+    writer.set_page_label(0, 0, style="/r")
+    writer.set_page_label(1, 2, style="/D", start=1)
+    labelled = tmp_path / "labelled.pdf"
+    writer.write(labelled)
+
+    pages = load_pdf(labelled, {"title": "Report"})
+    assert [p.metadata["page_label"] for p in pages] == ["i", "1", "2"]
+    assert [p.metadata["page_number"] for p in pages] == [1, 2, 3]
