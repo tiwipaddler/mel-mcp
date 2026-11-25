@@ -8,7 +8,7 @@ import pytest
 from conftest import IATI_XML
 
 from mel_mcp import download_docs, prepare_iati
-from mel_mcp.metadata import ManifestError, append_to_manifest, load_manifest
+from mel_mcp.metadata import ManifestError, append_to_manifest, load_manifest, update_manifest
 
 PDF = b"%PDF-1.4\n% fake report\n"
 
@@ -265,3 +265,24 @@ def test_cut_off_downloads_are_skipped():
 
     with pytest.raises(download_docs.SkipDocument, match="cut off"):
         download_docs.download_document("https://example.org/a.pdf", opener=opener)
+
+
+def test_a_sample_size_of_zero_is_kept(manifest_file):
+    entry = {
+        "file": "iati/desk-review.pdf",
+        "title": "Desk review",
+        "study_phase": "endline",
+        "source_type": "evaluation_report",
+        "sample_size": 0,
+    }
+    append_to_manifest(manifest_file, [entry])
+    assert load_manifest(manifest_file)["iati/desk-review.pdf"]["sample_size"] == 0
+
+
+def test_updates_are_refused_when_a_file_is_listed_twice(manifest_file):
+    with open(manifest_file, "a", encoding="utf-8") as f:
+        f.write("baseline.pdf,Copy,,,,baseline,2021,Kenya,evaluation_report,,\n")
+    before = manifest_file.read_text()
+    with pytest.raises(ManifestError, match="listed twice"):
+        update_manifest(manifest_file, {"endline.pdf": {"reporting_year": 2024}})
+    assert manifest_file.read_text() == before

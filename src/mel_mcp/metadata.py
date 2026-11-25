@@ -109,6 +109,11 @@ def load_manifest(path: Path) -> dict[str, dict]:
     return manifest
 
 
+def _cell(value) -> str:
+    """A CSV cell: only a missing value is blank, so 0 stays 0."""
+    return "" if value is None else str(value)
+
+
 def append_to_manifest(path: Path, entries: list[dict]) -> int:
     """Add entries for files the manifest doesn't list yet. Returns how many were added.
 
@@ -130,7 +135,7 @@ def append_to_manifest(path: Path, entries: list[dict]) -> int:
     listed = {(r.get("file") or "").strip().replace("\\", "/") for r in existing_rows}
     new_rows = []
     for entry in entries:
-        row = {c: str(entry.get(c) or "") for c in MANIFEST_COLUMNS}
+        row = {c: _cell(entry.get(c)) for c in MANIFEST_COLUMNS}
         try:
             meta = _clean_row(row, len(existing_rows) + len(new_rows) + 2)
         except ManifestError as exc:
@@ -161,7 +166,7 @@ def update_manifest(path: Path, changes: dict[str, dict]) -> int:
         update = changes.get((row.get("file") or "").strip().replace("\\", "/"))
         if not update:
             continue
-        new = {**row, **{k: str(v) for k, v in update.items()}}
+        new = {**row, **{k: _cell(v) for k, v in update.items()}}
         _clean_row(new, line)  # never write a row that wouldn't load
         if new != row:
             row.update(new)
@@ -170,6 +175,15 @@ def update_manifest(path: Path, changes: dict[str, dict]) -> int:
         if column not in columns:
             columns.append(column)
     if changed:
+        seen: dict[str, int] = {}
+        for line, row in enumerate(rows, start=2):
+            file = (row.get("file") or "").strip().replace("\\", "/")
+            if file in seen:
+                raise ManifestError(
+                    f"Line {line}: '{file}' is listed twice (also line {seen[file]}). "
+                    f"{path.name} was not changed."
+                )
+            seen[file] = line
         with open(path, "w", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=columns, extrasaction="ignore")
             writer.writeheader()
