@@ -297,18 +297,29 @@ class SurveyData:
             if total < self.min_cell_size:
                 suppressed.append(label)
                 continue
-            # Small categories are suppressed too: a share of two people can identify them.
+            counts = {str(category): n for g, category, n in rows if g == group}
+            hidden = self._complementary(counts)
             shares = {
-                str(category): (
-                    round(100 * n / total, 1)
-                    if n >= self.min_cell_size
-                    else f"suppressed (n<{self.min_cell_size})"
+                category: (
+                    f"suppressed (n<{self.min_cell_size})"
+                    if n < self.min_cell_size
+                    else "suppressed (protects a small category)"
+                    if category in hidden
+                    else round(100 * n / total, 1)
                 )
-                for g, category, n in rows
-                if g == group
+                for category, n in counts.items()
             }
             results.append({"group": label, "n": total, "value": shares})
         return results, suppressed
+
+    def _complementary(self, counts: dict[str, int]) -> set[str]:
+        """Categories to hide in one group: the small ones, plus the next smallest when only
+        one is small. Otherwise it could be worked out by subtracting the others from 100%."""
+        hidden = {c for c, n in counts.items() if n < self.min_cell_size}
+        if len(hidden) == 1 and len(counts) > 1:
+            visible = sorted((n, c) for c, n in counts.items() if c not in hidden)
+            hidden.add(visible[0][1])
+        return hidden
 
     @staticmethod
     def _label(group, group_by: str | None) -> str:

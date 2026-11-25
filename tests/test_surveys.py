@@ -112,3 +112,12 @@ def test_profile_covers_only_group_and_measure_variables(surveys):
     assert profile["county"]["categories"] == ["Alpha", "Beta"]
     assert profile["county"]["rare_categories"] == 1
     assert profile["yield_kg"]["mean"] > 0
+
+
+def test_a_small_category_cannot_be_worked_out_by_subtraction(surveys):
+    # Gamma has 5 respondents. If Alpha and Beta were both shown, 100% minus them is Gamma.
+    [result] = surveys.aggregate("test_baseline", "county", "share")["results"]
+    shares = result["value"]
+    assert shares["Gamma"] == "suppressed (n<10)"
+    assert shares["Beta"] == "suppressed (protects a small category)"  # the next smallest
+    assert isinstance(shares["Alpha"], float)
