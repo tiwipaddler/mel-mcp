@@ -286,3 +286,46 @@ def test_updates_are_refused_when_a_file_is_listed_twice(manifest_file):
     with pytest.raises(ManifestError, match="listed twice"):
         update_manifest(manifest_file, {"endline.pdf": {"reporting_year": 2024}})
     assert manifest_file.read_text() == before
+
+
+def _links(mel_settings, rows: list[str]) -> None:
+    mel_settings.data_dir.mkdir(parents=True, exist_ok=True)
+    (mel_settings.data_dir / "iati_documents.csv").write_text(
+        "file,category,study_phase,reporting_year,title,project,country,format,url\n"
+        + "\n".join(rows)
+        + "\n",
+        encoding="utf-8",
+    )
+
+
+def test_country_filter_finds_multi_country_documents(mel_settings, monkeypatch, capsys):
+    monkeypatch.setattr(download_docs, "settings", mel_settings)
+    _links(
+        mel_settings,
+        [
+            "a.pdf,A07,endline,2023,Regional review,R,KE; UG,application/pdf,https://x.org/a.pdf",
+            "b.pdf,A07,endline,2023,Uganda only,U,UG,application/pdf,https://x.org/b.pdf",
+        ],
+    )
+    download_docs.main(["--dry-run", "--country", "Kenya"], opener=fake_web({})[0])
+    out = capsys.readouterr().out
+    assert "Regional review" in out and "Uganda only" not in out
+
+
+def test_a_report_shared_by_two_activities_gets_both_countries(
+    manifest_file, mel_settings, monkeypatch
+):
+    monkeypatch.setattr(download_docs, "settings", mel_settings)
+    with open(manifest_file, "a", encoding="utf-8") as f:
+        f.write(
+            "iati/shared.pdf,Shared,,,,endline,2023,Kenya,evaluation_report,,https://x.org/s.pdf\n"
+        )
+    _links(
+        mel_settings,
+        [
+            "s.pdf,A07,endline,2023,Shared,P1,KE,application/pdf,https://x.org/s.pdf",
+            "s.pdf,A07,endline,2023,Shared,P2,TZ,application/pdf,https://x.org/s.pdf",
+        ],
+    )
+    assert download_docs.update_countries() == 1
+    assert load_manifest(manifest_file)["iati/shared.pdf"]["country"] == "Kenya; Tanzania"

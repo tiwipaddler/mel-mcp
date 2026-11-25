@@ -16,6 +16,7 @@ from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from mel_mcp.config import settings
+from mel_mcp.countries import canonical_countries, country_code, split_countries
 from mel_mcp.metadata import ManifestError, append_to_manifest, load_manifest, update_manifest
 
 MAX_BYTES = 50 * 1024 * 1024
@@ -145,12 +146,22 @@ def manifest_entry(doc: dict, file_name: str) -> dict:
     }
 
 
+def covers_country(doc: dict, wanted: str) -> bool:
+    """Whether a document's countries ('KE; UG') include `wanted`, given as a name or code."""
+    code = country_code(wanted).lower()
+    return any(country_code(c).lower() == code for c in split_countries(doc.get("country")))
+
+
 def update_countries() -> int:
-    """Set each IATI-sourced manifest row's country to every country its activity covers.
+    """Set each IATI-sourced manifest row's country to every country its activities cover.
+    One report can be linked from several activities, so their countries are combined.
     Matched by URL; nothing else in the manifest changes."""
-    countries_by_url = {
-        d["url"]: d.get("country", "") for d in load_documents(settings.data_dir) if d.get("url")
-    }
+    found: dict[str, list[str]] = {}
+    for d in load_documents(settings.data_dir):
+        if d.get("url"):
+            countries = found.setdefault(d["url"], [])
+            countries += [c for c in canonical_countries(d.get("country")) if c not in countries]
+    countries_by_url = {url: "; ".join(names) for url, names in found.items()}
     changes = {
         file: {"country": countries_by_url[meta["url"]]}
         for file, meta in load_manifest(settings.manifest_file).items()
@@ -202,7 +213,7 @@ def main(argv: list[str] | None = None, opener=None) -> None:
     if args.category:
         docs = [d for d in docs if d["category"] == args.category]
     if args.country:
-        docs = [d for d in docs if d.get("country", "").lower() == args.country.lower()]
+        docs = [d for d in docs if covers_country(d, args.country)]
     if args.since_year:
         docs = [d for d in docs if recent_enough(d, args.since_year, args.include_undated)]
     candidates = [d for d in docs if looks_supported(d)]
