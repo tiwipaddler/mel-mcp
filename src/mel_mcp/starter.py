@@ -19,38 +19,66 @@ from mel_mcp.config import ROOT, Settings, settings
 from mel_mcp.countries import canonical_countries, canonical_country, country_code
 from mel_mcp.documents import DocumentIndex
 from mel_mcp.download_docs import SkipDocument, download_document
-from mel_mcp.metadata import MANIFEST_COLUMNS, append_to_manifest, load_manifest
+from mel_mcp.metadata import MANIFEST_COLUMNS, ManifestError, append_to_manifest, load_manifest
 from mel_mcp.tables import read_csv
 
 PACK = ROOT / "starter" / "kenya-agriculture"
 PAUSE_SECONDS = 1  # between downloads, to be polite to the publishers' servers
+PACK_FILES = ("manifest.csv", "indicators.csv")
+
+
+def _stem(file: str) -> str:
+    return file.rsplit(".", 1)[0]  # a report saved as .odt is the same report
+
+
+def _is_starter_data(s: Settings, pack: Path, tracker: Path) -> bool:
+    """Whether the manifest and tracker that exist came from this pack, unchanged."""
+    if tracker.exists() and tracker.read_bytes() != (pack / "indicators.csv").read_bytes():
+        return False
+    if s.manifest_file.exists():
+        try:
+            listed = {_stem(f) for f in load_manifest(s.manifest_file)}
+        except ManifestError:
+            return False
+        return listed <= {_stem(r["file"]) for r in read_csv(pack / "manifest.csv")}
+    return True
+
+
+def _downloaded(target: Path) -> Path | None:
+    return next(
+        (p for p in (target.with_suffix(".pdf"), target.with_suffix(".odt")) if p.exists()), None
+    )
 
 
 def load(
     s: Settings = settings, pack: Path = PACK, opener=None, pause: float = PAUSE_SECONDS
 ) -> int:
     """Download the pack's reports into the docs folder and copy its tracker. Returns the
-    number of reports now available. Refuses to touch a manifest or tracker that exists."""
+    number of reports now available. Running it again fetches only reports that are missing.
+    Refuses to touch a manifest or tracker that isn't the pack's own."""
+    if missing := [name for name in PACK_FILES if not (pack / name).exists()]:
+        raise SystemExit(f"The starter pack in this copy ({pack}) is missing {', '.join(missing)}.")
     tracker = s.data_dir / "indicators.csv"
-    if existing := [str(p) for p in (s.manifest_file, tracker) if p.exists()]:
+    existing = [str(p) for p in (s.manifest_file, tracker) if p.exists()]
+    if existing and not _is_starter_data(s, pack, tracker):
         raise SystemExit(
             f"Not loading the starter pack: {' and '.join(existing)} already exist. "
             "The starter pack is for a fresh copy of the project; your own data is left as is."
         )
+    if existing:
+        print("  The starter pack is already loaded; fetching any reports that are missing.")
 
-    if not (pack / "manifest.csv").exists():
-        raise SystemExit(f"The starter pack is missing from this copy ({pack}).")
     rows = read_csv(pack / "manifest.csv")
     entries = []
     for i, row in enumerate(rows, 1):
-        target = s.docs_dir / row["file"]
-        if not target.exists():
+        target = _downloaded(s.docs_dir / row["file"])
+        if target is None:
             try:
                 data, kind = download_document(row["url"], opener)
             except SkipDocument as exc:
                 print(f"  [{i}/{len(rows)}] {row['title'][:60]}: skipped ({exc})")
                 continue
-            target = target.with_suffix(f".{kind}")
+            target = (s.docs_dir / row["file"]).with_suffix(f".{kind}")
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(data)
             time.sleep(pause)
@@ -109,15 +137,19 @@ def build(
     ]
     picked = _spread_across_projects(candidates, limit)
 
+    # Read everything before writing anything, so a missing tracker can't leave half a pack.
+    tracker_file = s.data_dir / "indicators.csv"
+    if not tracker_file.exists():
+        raise SystemExit(f"No indicator tracker at {tracker_file}. Run mel-prepare-iati first.")
+    code = country_code(country)
+    tracker = read_csv(tracker_file)
+    kept = [r for r in tracker if code in r.get("country", "").upper().replace(" ", "").split(";")]
+
     pack.mkdir(parents=True, exist_ok=True)
     with open(pack / "manifest.csv", "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=MANIFEST_COLUMNS, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(picked)
-
-    code = country_code(country)
-    tracker = read_csv(s.data_dir / "indicators.csv")
-    kept = [r for r in tracker if code in r.get("country", "").upper().replace(" ", "").split(";")]
     with open(pack / "indicators.csv", "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=list(tracker[0]) if tracker else [])
         writer.writeheader()

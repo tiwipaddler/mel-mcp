@@ -106,8 +106,38 @@ def test_load_downloads_reports_and_copies_the_tracker(fresh_copy, capsys):
     assert "skipped (HTTP 404)" in capsys.readouterr().out
 
 
-def test_load_never_replaces_existing_data(fresh_copy):
+def test_load_never_replaces_your_own_data(fresh_copy):
     s, pack, opener = fresh_copy
     starter.load(s, pack, opener, pause=0)
+    with open(s.manifest_file, "a", encoding="utf-8") as f:
+        f.write("mine.pdf,My report,,,,endline,2024,Kenya,evaluation_report,,\n")
+    before = s.manifest_file.read_text()
     with pytest.raises(SystemExit, match="already exist"):
         starter.load(s, pack, opener, pause=0)
+    assert s.manifest_file.read_text() == before
+
+
+def test_loading_again_fetches_only_what_is_missing(fresh_copy, capsys):
+    s, pack, opener = fresh_copy
+    starter.load(s, pack, opener, pause=0)
+    pdf = (s.docs_dir / "a1.pdf").read_bytes()
+    fixed = fake_web({"https://example.org/b1.pdf": pdf})  # only b1 can be downloaded now
+    assert starter.load(s, pack, fixed, pause=0) == 3
+    assert "already loaded" in capsys.readouterr().out
+    assert set(load_manifest(s.manifest_file)) == {"c1.pdf", "a1.pdf", "b1.pdf"}
+
+
+def test_an_incomplete_pack_changes_nothing(fresh_copy):
+    s, pack, opener = fresh_copy
+    (pack / "indicators.csv").unlink()
+    with pytest.raises(SystemExit, match="missing indicators.csv"):
+        starter.load(s, pack, opener, pause=0)
+    assert not s.docs_dir.exists() and not s.data_dir.exists()
+
+
+def test_build_without_a_tracker_writes_nothing(maintainer):
+    s, pack = maintainer
+    (s.data_dir / "indicators.csv").unlink()
+    with pytest.raises(SystemExit, match="No indicator tracker"):
+        starter.build(s, pack)
+    assert not pack.exists()
