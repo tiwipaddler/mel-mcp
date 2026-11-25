@@ -105,8 +105,10 @@ def test_slow_queries_are_stopped(prepared_data):
             con.execute("SELECT count(*) FROM range(100000000000) a").fetchall()
 
 
-def test_profile_never_reads_values_of_private_variables(surveys):
+def test_profile_covers_only_group_and_measure_variables(surveys):
     profile = surveys.profile("test_baseline")
-    assert "categories" not in profile["respondent_name"] and "mean" not in profile["hh_id"]
-    assert profile["county"]["categories"] == ["Alpha", "Beta", "Gamma"]
+    assert not {"respondent_name", "phone_number", "hh_id"} & set(profile)
+    # Gamma has fewer than 10 respondents, so it is counted but not named.
+    assert profile["county"]["categories"] == ["Alpha", "Beta"]
+    assert profile["county"]["rare_categories"] == 1
     assert profile["yield_kg"]["mean"] > 0

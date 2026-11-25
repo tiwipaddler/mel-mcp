@@ -14,7 +14,6 @@ from mel_mcp.surveys import SurveyData
 SEVERITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 UNIT_CHANGE_RATIO = 5.0  # a mean 5x larger or smaller suggests a unit change
 MISSINGNESS_JUMP = 0.2  # 20 percentage points more (or fewer) missing answers
-PUBLIC_ROLES = ("group", "measure")
 
 
 def _is_numeric(col_type: str | None) -> bool:
@@ -54,13 +53,9 @@ def _finding(kind: str, severity: str, variable: str, detail: str, **evidence) -
     }
 
 
-def compare(engine: SurveyData, earlier: str, later: str, include_private: bool = False) -> dict:
-    """Compare two datasets. With include_private=False (what the MCP server uses),
-    id and exclude variables are left out entirely."""
+def compare(engine: SurveyData, earlier: str, later: str) -> dict:
+    """Compare two datasets' group and measure variables (see SurveyData.profile)."""
     a, b = engine.profile(earlier), engine.profile(later)
-    if not include_private:
-        a = {k: v for k, v in a.items() if v["role"] in PUBLIC_ROLES}
-        b = {k: v for k, v in b.items() if v["role"] in PUBLIC_ROLES}
 
     def present(profiles):  # variables that actually exist in the data
         return {k for k, v in profiles.items() if not v.get("absent")}
@@ -175,14 +170,17 @@ def compare(engine: SurveyData, earlier: str, later: str, include_private: bool 
                 )
         jump = new["missing_share"] - old["missing_share"]
         if abs(jump) >= MISSINGNESS_JUMP:
+            if min(old["n"], new["n"]) < engine.min_cell_size:
+                # With so few answers, the percentages would reveal a small count.
+                change = "changed sharply"
+            else:
+                change = f"went from {old['missing_share']:.0%} to {new['missing_share']:.0%}"
             findings.append(
                 _finding(
                     "missingness_jump",
                     "medium",
                     var,
-                    f"Missing answers for '{var}' went from {old['missing_share']:.0%} "
-                    f"to {new['missing_share']:.0%} "
-                    "(check skip logic or the form).",
+                    f"Missing answers for '{var}' {change} (check skip logic or the form).",
                 )
             )
 

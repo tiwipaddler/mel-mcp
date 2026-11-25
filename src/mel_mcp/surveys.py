@@ -19,6 +19,7 @@ from mel_mcp.tables import DataError, modified, read_csv
 
 Stat = Literal["mean", "median", "share", "count"]
 ROLES = ("group", "measure", "id", "exclude")
+PUBLIC_ROLES = ("group", "measure")
 NAME_PATTERN = re.compile(r"^[a-z0-9_]+$")
 NUMERIC_TYPES = ("INT", "DOUBLE", "FLOAT", "DECIMAL")
 MAX_GROUPS = 50
@@ -132,51 +133,52 @@ class SurveyData:
         }
 
     def profile(self, name: str) -> dict[str, dict]:
-        """A summary of each variable, used to compare survey rounds.
+        """A summary of each group and measure variable, used to compare survey rounds.
 
-        Every variable gets its role, label, type and share missing. Only group and measure
-        variables get their categories or mean, so nothing in an id or exclude column is read.
+        Only variables the dictionary lists as group or measure are read. id, exclude and
+        undocumented columns are never queried, so nothing about them can reach a drift
+        finding. Categories held by fewer than min_cell_size respondents are counted in
+        rare_categories but not named.
         """
         ds = self._dataset(name)
-        variables = {v["variable"]: v for v in self.dictionary(name)}
+        public = {v["variable"]: v for v in self.dictionary(name) if v["role"] in PUBLIC_ROLES}
         profiles: dict[str, dict] = {}
         with self._query(ds) as con:
             types = dict(
                 con.execute("SELECT column_name, column_type FROM (DESCRIBE d)").fetchall()
             )
             total = con.execute("SELECT count(*) FROM d").fetchone()[0]
-            for column, col_type in types.items():
-                meta = variables.get(column, {"role": "undocumented", "label": ""})
-                q = _quote(column)
-                n = con.execute(f"SELECT count({q}) FROM d").fetchone()[0]
-                p = {
-                    "role": meta["role"],
-                    "label": meta.get("label", ""),
-                    "type": col_type,
-                    "n": n,
-                    "missing_share": round(1 - n / total, 3) if total else 0.0,
-                }
-                numeric = _is_numeric(col_type)
-                if meta["role"] == "measure" and numeric and n >= self.min_cell_size:
-                    p["mean"] = con.execute(f"SELECT avg({q}) FROM d").fetchone()[0]
-                if meta["role"] in ("group", "measure") and not numeric:
-                    cats = con.execute(
-                        f"SELECT DISTINCT CAST({q} AS VARCHAR) FROM d "
-                        f"WHERE {q} IS NOT NULL LIMIT {MAX_GROUPS + 1}"
-                    ).fetchall()
-                    if len(cats) <= MAX_GROUPS:
-                        p["categories"] = sorted(c[0] for c in cats)
-                profiles[column] = p
-            for column, meta in variables.items():
-                if column not in profiles:
+            for column, meta in public.items():
+                base = {"role": meta["role"], "label": meta.get("label", "")}
+                if column not in types:
                     profiles[column] = {
-                        "role": meta["role"],
-                        "label": meta.get("label", ""),
+                        **base,
                         "type": None,
                         "n": 0,
                         "missing_share": 1.0,
                         "absent": True,
                     }
+                    continue
+                q = _quote(column)
+                n = con.execute(f"SELECT count({q}) FROM d").fetchone()[0]
+                p = {
+                    **base,
+                    "type": types[column],
+                    "n": n,
+                    "missing_share": 1 - n / total if total else 0.0,
+                }
+                numeric = _is_numeric(types[column])
+                if meta["role"] == "measure" and numeric and n >= self.min_cell_size:
+                    p["mean"] = con.execute(f"SELECT avg({q}) FROM d").fetchone()[0]
+                if not numeric:
+                    counts = con.execute(
+                        f"SELECT CAST({q} AS VARCHAR), count(*) FROM d WHERE {q} IS NOT NULL "
+                        f"GROUP BY 1 LIMIT {MAX_GROUPS + 1}"
+                    ).fetchall()
+                    if len(counts) <= MAX_GROUPS:
+                        p["categories"] = sorted(c for c, k in counts if k >= self.min_cell_size)
+                        p["rare_categories"] = sum(k < self.min_cell_size for _, k in counts)
+                profiles[column] = p
         return profiles
 
     def _variable(self, variables: list[dict], name: str, roles: tuple[str, ...]) -> dict:

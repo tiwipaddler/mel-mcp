@@ -65,8 +65,8 @@ def template_summary(findings: list[dict]) -> str:
 
 
 def claude_summary(model: str) -> Summariser:
-    """Summarise with Claude. Only findings are sent (names, labels, categories
-    and averages of public variables), never survey rows."""
+    """Summarise with Claude. Only findings are sent, and they only ever cover group and
+    measure variables (names, labels, common categories, averages), never survey rows."""
     import anthropic
 
     client = anthropic.Anthropic()
@@ -103,7 +103,7 @@ def build_graph(engine: SurveyData, s: Settings = settings, summariser: Summaris
     def detect(state: DriftState) -> DriftState:
         findings = []
         for earlier, later in state.get("pairs", []):
-            result = drift.compare(engine, earlier, later, include_private=True)
+            result = drift.compare(engine, earlier, later)
             findings += [{**f, "earlier": earlier, "later": later} for f in result["findings"]]
         return {"findings": findings}
 

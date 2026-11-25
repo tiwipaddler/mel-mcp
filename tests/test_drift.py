@@ -40,17 +40,12 @@ def test_compare_finds_the_planted_drift(engine):
     assert "removed" not in found  # the rename was recognised, not reported twice
 
 
-def test_public_comparison_hides_private_variables(engine, prepared_data):
-    # Rename a private column between rounds: the public comparison must not mention it.
-    path = prepared_data.data_dir / "test_endline.dictionary.csv"
-    public = drift.compare(engine, "test_baseline", "test_endline", include_private=False)
-    assert all(
-        f["variable"] not in ("respondent_name", "phone_number", "hh_id")
-        for f in public["findings"]
-    )
-    private = drift.compare(engine, "test_baseline", "test_endline", include_private=True)
-    assert len(private["findings"]) >= len(public["findings"])
-    assert path.exists()
+def test_comparisons_never_mention_private_variables(engine):
+    import json
+
+    result = json.dumps(drift.compare(engine, "test_baseline", "test_endline"))
+    for private in ("respondent_name", "phone_number", "hh_id"):
+        assert private not in result
 
 
 def test_same_round_has_no_drift(engine):
@@ -132,3 +127,17 @@ def test_numeric_widening_is_low_severity(engine):
     found = by_type(drift.compare(engine, "test_baseline", "test_endline"))
     widen = [f for f in found.get("type_changed", []) if f["variable"] == "used_fert"]
     assert widen and widen[0]["severity"] == "low"  # INTEGER → DOUBLE because of missing values
+
+
+def test_missingness_on_few_answers_gives_no_percentages(engine, monkeypatch):
+    profiles = {
+        "a": {
+            "x": {"role": "measure", "label": "", "type": "DOUBLE", "n": 400, "missing_share": 0.0}
+        },
+        "b": {
+            "x": {"role": "measure", "label": "", "type": "DOUBLE", "n": 4, "missing_share": 0.99}
+        },
+    }
+    monkeypatch.setattr(engine, "profile", lambda name: profiles[name])
+    [finding] = drift.compare(engine, "a", "b")["findings"]
+    assert finding["type"] == "missingness_jump" and "%" not in finding["detail"]
