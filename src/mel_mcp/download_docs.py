@@ -7,10 +7,13 @@ guessed from the title, so check it. See `mel-download-docs --help` for the opti
 
 import argparse
 import csv
+import ipaddress
+import socket
 import sys
 from pathlib import Path
 from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+from urllib.parse import urlsplit
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from mel_mcp.config import settings
 from mel_mcp.metadata import ManifestError, append_to_manifest, load_manifest, update_manifest
@@ -25,6 +28,37 @@ ODT_MIMETYPE = b"application/vnd.oasis.opendocument.text"
 
 class SkipDocument(Exception):
     pass
+
+
+def check_url(url: str, resolve=socket.getaddrinfo) -> None:
+    """Allow only web links to public internet addresses.
+
+    Links come from IATI data, which anyone can publish. Without this, a link could make
+    the downloader request something on the user's own network, such as a router page.
+    """
+    parts = urlsplit(url)
+    if parts.scheme not in ("http", "https") or not parts.hostname:
+        raise SkipDocument("not a web link")
+    try:
+        addresses = resolve(parts.hostname, None, type=socket.SOCK_STREAM)
+    except (OSError, UnicodeError) as exc:
+        raise SkipDocument(f"could not connect ({exc})") from exc
+    for *_, sockaddr in addresses:
+        if not ipaddress.ip_address(sockaddr[0].split("%")[0]).is_global:
+            raise SkipDocument("the link points to a private or local network address")
+
+
+class _CheckedRedirects(HTTPRedirectHandler):
+    """Check every redirect too, so a public link can't forward to a private address."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        check_url(newurl)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+def _open_public(request: Request, timeout: float):
+    check_url(request.full_url)
+    return build_opener(_CheckedRedirects).open(request, timeout=timeout)
 
 
 def load_documents(data_dir: Path) -> list[dict]:
@@ -62,17 +96,23 @@ def file_kind(data: bytes) -> str | None:
 
 def download_document(url: str, opener=None) -> tuple[bytes, str]:
     """Fetch a URL; return (bytes, 'pdf' or 'odt') if it really is one of those, under MAX_BYTES."""
-    opener = opener or urlopen
-    request = Request(url, headers={"User-Agent": USER_AGENT})
+    opener = opener or _open_public
     try:
+        request = Request(url, headers={"User-Agent": USER_AGENT})
         with opener(request, timeout=60) as response:
             data = response.read(MAX_BYTES + 1)
+            headers = getattr(response, "headers", None)
+            declared = headers.get("Content-Length") if headers else None
+    except ValueError as exc:  # Request() rejects relative or malformed links
+        raise SkipDocument("not a valid link") from exc
     except HTTPError as exc:
         raise SkipDocument(f"HTTP {exc.code}") from exc
     except (URLError, TimeoutError, OSError) as exc:
         raise SkipDocument(f"could not connect ({getattr(exc, 'reason', exc)})") from exc
     if len(data) > MAX_BYTES:
         raise SkipDocument("larger than 50 MB")
+    if declared and declared.isdigit() and len(data) < int(declared):
+        raise SkipDocument("the download was cut off")
     kind = file_kind(data)
     if kind is None:
         raise SkipDocument("not a PDF or OpenDocument file (probably a web page)")

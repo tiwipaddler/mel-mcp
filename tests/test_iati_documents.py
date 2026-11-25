@@ -221,3 +221,47 @@ def test_since_year_skips_old_and_undated_documents(documents, capsys):
 
     assert download_docs.recent_enough({"reporting_year": ""}, 2020) is False
     assert download_docs.recent_enough({"reporting_year": ""}, 2020, include_undated=True) is True
+
+
+def fake_dns(address):
+    return lambda host, port, type: [(2, 1, 6, "", (address, 0))]
+
+
+@pytest.mark.parametrize(
+    "address", ["127.0.0.1", "10.0.0.5", "192.168.1.1", "169.254.169.254", "::1"]
+)
+def test_links_to_private_addresses_are_refused(address):
+    with pytest.raises(download_docs.SkipDocument, match="private or local"):
+        download_docs.check_url("https://reports.example.org/a.pdf", resolve=fake_dns(address))
+
+
+def test_public_web_links_are_allowed():
+    download_docs.check_url("https://reports.example.org/a.pdf", resolve=fake_dns("93.184.215.14"))
+
+
+@pytest.mark.parametrize("url", ["file:///etc/passwd", "ftp://example.org/a.pdf", "https://"])
+def test_non_web_links_are_refused(url):
+    with pytest.raises(download_docs.SkipDocument, match="not a web link"):
+        download_docs.check_url(url, resolve=fake_dns("93.184.215.14"))
+
+
+def test_redirects_to_private_addresses_are_refused():
+    handler = download_docs._CheckedRedirects()
+    with pytest.raises(download_docs.SkipDocument, match="private or local"):
+        handler.redirect_request(None, None, 302, "Found", {}, "http://127.0.0.1/admin")
+
+
+def test_malformed_links_are_skipped_not_fatal():
+    with pytest.raises(download_docs.SkipDocument, match="not a valid link"):
+        download_docs.download_document("reports/a.pdf", opener=lambda request, timeout: None)
+
+
+def test_cut_off_downloads_are_skipped():
+    class Response(io.BytesIO):
+        headers = {"Content-Length": "5000"}
+
+    def opener(request, timeout):
+        return Response(b"%PDF-1.4 only the start")
+
+    with pytest.raises(download_docs.SkipDocument, match="cut off"):
+        download_docs.download_document("https://example.org/a.pdf", opener=opener)
