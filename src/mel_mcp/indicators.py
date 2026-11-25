@@ -5,6 +5,7 @@ unusable; cautions mean its figures should be checked against the reports first.
 """
 
 import re
+from datetime import date
 from pathlib import Path
 
 from mel_mcp.countries import COUNTRY_NAMES, country_code
@@ -106,17 +107,39 @@ def copied_figures(rows: list[dict]) -> dict[tuple[str, str], list[str]]:
     return copies
 
 
+def _is_date(value: str) -> bool:
+    try:
+        date.fromisoformat(value[:10])
+    except ValueError:
+        return False
+    return True
+
+
 def _issues(row: dict, target, actual, achieved, baseline) -> list[str]:
     issues = []
     start, end = row.get("period_start", ""), row.get("period_end", "")
-    for label, date in (("start", start), ("end", end)):
-        year = _year(date)
-        if year and year < EARLIEST_PLAUSIBLE_YEAR:
+    for label, value in (("start", start), ("end", end)):
+        if value and not _is_date(value):
+            issues.append(
+                f"The period {label} date '{value}' isn't a real date. "
+                "Correct it in the tracker (YYYY-MM-DD)."
+            )
+        elif (year := _year(value)) and year < EARLIEST_PLAUSIBLE_YEAR:
             issues.append(
                 f"A period {label} date of {year} looks like a placeholder, not a real date."
             )
     if not start and not end:
         issues.append("A period has no dates, so it can't be placed in time.")
+    for field, parsed in (("target", target), ("actual", actual)):
+        raw = row.get(field, "")
+        if raw and parsed is None:
+            issues.append(f"The {field} '{raw}' isn't a number the tracker can use.")
+    if target is None and actual is None and not (row.get("target") or row.get("actual")):
+        issues.append("Neither a target nor an actual is reported for this period.")
+    elif target not in (None, 0) and actual is None and not row.get("actual"):
+        issues.append("No actual is reported for this period, so progress can't be measured.")
+    if target is not None and target < 0:
+        issues.append("The target is negative, so % of target can't be read. Check its sign.")
     if target == 0 and actual in (None, 0):
         issues.append("Target and actual are both 0 or missing: probably nothing was reported.")
     elif target == 0:
@@ -148,7 +171,7 @@ def _issues(row: dict, target, actual, achieved, baseline) -> list[str]:
 def _cautions(row: dict, target, actual, copies, year_from) -> list[str]:
     cautions = []
     if target not in (None, 0) and actual is not None:
-        if not row.get("baseline_value"):
+        if number(row.get("baseline_value", "")) is None:
             cautions.append(
                 "No baseline is published, so % of target assumes the starting point was 0. "
                 "If this measures something that existed before the project, find the baseline "

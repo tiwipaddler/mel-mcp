@@ -1,6 +1,7 @@
 """Reading the CSV files in the data folder, and the error the data tools raise."""
 
 import csv
+import math
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -17,10 +18,12 @@ def read_csv(path: Path) -> list[dict[str, str]]:
 
 
 def number(value: str) -> float | None:
+    """A finite number, or None. 'nan', 'inf' and text all give None."""
     try:
-        return float(value.replace(",", ""))
+        parsed = float(value.replace(",", ""))
     except (AttributeError, ValueError):
         return None
+    return parsed if math.isfinite(parsed) else None
 
 
 def modified(path: Path) -> str:

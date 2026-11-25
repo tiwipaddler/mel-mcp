@@ -316,3 +316,42 @@ def test_indicator_names_fall_back_and_lose_html():
     assert (
         indicator_name(result.find("indicator"), result) == "Farmers trained"
     )  # double-escaped HTML handled
+
+
+def _one_period(tmp_path, start, end, target, actual, baseline=""):
+    data = tmp_path / "data"
+    data.mkdir(exist_ok=True)
+    (data / "indicators.csv").write_text(
+        TRACKER.splitlines()[0] + "\n"
+        f"P/R1/I1,Farmers trained,unit,1,P,KE,,{baseline},{start},{end},{target},{actual},IATI: X\n"
+    )
+    return IndicatorTracker(data).get("P/R1/I1")
+
+
+@pytest.mark.parametrize(
+    "target,actual,expected",
+    [
+        ("nan", "120", "target 'nan' isn't a number"),
+        ("400", "inf", "actual 'inf' isn't a number"),
+        ("400", "about 300", "actual 'about 300' isn't a number"),
+        ("400", "", "No actual is reported"),
+        ("", "", "Neither a target nor an actual"),
+        ("-400", "300", "target is negative"),
+    ],
+)
+def test_unusable_periods_always_say_why(tmp_path, target, actual, expected):
+    out = _one_period(tmp_path, "2022-01-01", "2022-12-31", target, actual)
+    assert out["usable"] is False
+    assert any(expected in issue for issue in out["data_quality"])
+
+
+def test_a_baseline_that_isnt_a_number_counts_as_missing(tmp_path):
+    out = _one_period(tmp_path, "2022-01-01", "2022-12-31", "400", "310", baseline="nan")
+    assert out["baseline"]["value"] is None
+    assert "No baseline is published" in " ".join(out["periods"][0]["cautions"])
+
+
+def test_impossible_dates_are_flagged(tmp_path):
+    out = _one_period(tmp_path, "2022-02-30", "2022-12-31", "400", "300")
+    assert out["usable"] is False
+    assert "'2022-02-30' isn't a real date" in out["data_quality"][0]
