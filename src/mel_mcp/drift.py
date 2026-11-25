@@ -183,7 +183,8 @@ def compare(engine: SurveyData, earlier: str, later: str) -> dict:
                     )
                 )
         jump = new["missing_share"] - old["missing_share"]
-        if abs(jump) >= MISSINGNESS_JUMP:
+        # Rounded so that 10% -> 30% counts as 20 points (0.3 - 0.1 is 0.1999... in floats).
+        if round(abs(jump), 9) >= MISSINGNESS_JUMP:
             if min(old["n"], new["n"]) < engine.min_cell_size:
                 # With so few answers, the percentages would reveal a small count.
                 change = "changed sharply"
@@ -232,6 +233,7 @@ def affected_readers(finding: dict, datasets: tuple[str, ...], usage: list[dict]
         "type_changed",
         "recoded",
         "possible_unit_change",
+        "missingness_jump",
     ):
         return []
     return sorted(

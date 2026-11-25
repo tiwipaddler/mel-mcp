@@ -76,7 +76,11 @@ def test_agent_raises_an_alert_with_affected_readers(engine, prepared_data):
     result = agent.invoke({})
 
     assert result["status"] == "drift"
-    fert = next(f for f in result["findings"] if f["variable"] == "used_fert")
+    fert = next(
+        f
+        for f in result["findings"]
+        if f["variable"] == "used_fert" and f["type"] == "missingness_jump"
+    )
     # A missingness jump is medium on its own; something depends on it, so it's high.
     assert fert["severity"] == "high" and fert["affected_readers"] == [
         "Indicator 2.3 fertiliser use"
@@ -168,3 +172,22 @@ def test_a_variable_private_in_either_round_is_left_out(engine, monkeypatch, rol
     monkeypatch.setattr(engine, "profile", profile)
     result = json.dumps(drift.compare(engine, "a", "b"))
     assert "village" not in result and "Village name" not in result
+
+
+def test_a_jump_of_exactly_twenty_points_is_reported(engine, monkeypatch):
+    def profile(name):
+        share = 0.1 if name == "a" else 0.3
+        return {
+            "x": {
+                "role": "measure",
+                "label": "",
+                "type": "DOUBLE",
+                "n": 400,
+                "missing_share": share,
+            }
+        }
+
+    monkeypatch.setattr(engine, "profile", profile)
+    monkeypatch.setattr(engine, "dictionary", lambda name: [{"variable": "x", "role": "measure"}])
+    [finding] = drift.compare(engine, "a", "b")["findings"]
+    assert finding["type"] == "missingness_jump" and "10% to 30%" in finding["detail"]
