@@ -76,8 +76,12 @@ def in_years(row: dict, year_from: int | None) -> bool:
     return not plausible or plausible[0] >= year_from
 
 
-def copied_figures(rows: list[dict]) -> dict[tuple[str, str], list[str]]:
-    """Map (indicator code, period start) to other indicators in the same project with the
+def period_key(row: dict) -> tuple[str, str, str]:
+    return (row.get("indicator_code", ""), row.get("period_start", ""), row.get("period_end", ""))
+
+
+def copied_figures(rows: list[dict]) -> dict[tuple[str, str, str], list[str]]:
+    """Map each period (see period_key) to other indicators in the same project with the
     same period, target and non-zero actual. Identical figures usually mean one was copied."""
     groups: dict[tuple, list[dict]] = {}
     for r in rows:
@@ -93,7 +97,7 @@ def copied_figures(rows: list[dict]) -> dict[tuple[str, str], list[str]]:
         )
         groups.setdefault(key, []).append(r)
 
-    copies: dict[tuple[str, str], list[str]] = {}
+    copies: dict[tuple[str, str, str], list[str]] = {}
     for same in groups.values():
         if len({r["indicator_code"] for r in same}) < 2:
             continue
@@ -103,7 +107,7 @@ def copied_figures(rows: list[dict]) -> dict[tuple[str, str], list[str]]:
                 for o in same
                 if o["indicator_code"] != r["indicator_code"]
             }
-            copies[(r["indicator_code"], r.get("period_start", ""))] = sorted(others)
+            copies[period_key(r)] = sorted(others)
     return copies
 
 
@@ -321,7 +325,7 @@ class IndicatorTracker:
             period = assess_period(
                 row,
                 number(row.get("baseline_value", "")),
-                copies.get((code, row.get("period_start", ""))),
+                copies.get(period_key(row)),
                 year_from,
             )
             entry["usable_periods"] += period["usable"]
@@ -400,7 +404,7 @@ class IndicatorTracker:
         baseline = number(first.get("baseline_value", ""))
         copies = copied_figures(all_rows)
         periods = [
-            assess_period(r, baseline, copies.get((code, r.get("period_start", ""))), year_from)
+            assess_period(r, baseline, copies.get(period_key(r)), year_from)
             for r in sorted(rows, key=lambda r: r.get("period_start", ""))
         ]
         issues = sorted({i for p in periods for i in p["issues"]})
@@ -431,10 +435,12 @@ class IndicatorTracker:
 
 
 def _project_summary(indicators: list[dict]) -> list[dict]:
+    """One entry per activity. Two activities can share a name, so group by the IATI
+    identifier and fall back to the name only when an indicator code has none."""
     projects: dict[str, dict] = {}
     for e in indicators:
         p = projects.setdefault(
-            e["project"],
+            project_code(e["indicator_code"]) or e["project"],
             {
                 "project": e["project"],
                 "project_code": project_code(e["indicator_code"]),

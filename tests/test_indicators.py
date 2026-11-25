@@ -355,3 +355,30 @@ def test_impossible_dates_are_flagged(tmp_path):
     out = _one_period(tmp_path, "2022-02-30", "2022-12-31", "400", "300")
     assert out["usable"] is False
     assert "'2022-02-30' isn't a real date" in out["data_quality"][0]
+
+
+def test_copied_figures_compare_whole_periods(tmp_path):
+    data = tmp_path / "data"
+    data.mkdir()
+    (data / "indicators.csv").write_text(
+        TRACKER.splitlines()[0] + "\n"
+        "P/R1/I1,Farmers trained,unit,1,P,KE,,,2022-01-01,2022-12-31,400,310,IATI: X\n"
+        "P/R1/I1,Farmers trained,unit,1,P,KE,,,2022-01-01,2023-12-31,800,650,IATI: X\n"
+        "P/R2/I1,Women trained,unit,1,P,KE,,,2022-01-01,2022-12-31,400,310,IATI: X\n"
+    )
+    periods = IndicatorTracker(data).get("P/R1/I1")["periods"]
+    copied = ["copied" in " ".join(p["cautions"]) for p in periods]
+    assert copied == [True, False]
+
+
+def test_projects_with_the_same_name_are_counted_apart(tmp_path):
+    data = tmp_path / "data"
+    data.mkdir()
+    (data / "indicators.csv").write_text(
+        TRACKER.splitlines()[0] + "\n"
+        "XM-A-1/R1/I1,Farmers trained,unit,1,Dairy support,KE,,,2022-01-01,2022-12-31,400,310,IATI: A\n"
+        "XM-B-2/R1/I1,Farmers trained,unit,1,Dairy support,KE,,,2022-01-01,2022-12-31,500,420,IATI: B\n"
+    )
+    out = IndicatorTracker(data).find("")
+    assert sorted(p["project_code"] for p in out["projects"]) == ["XM-A-1", "XM-B-2"]
+    assert out["projects_with_usable_data"] == 2
