@@ -129,6 +129,9 @@ def update_index(
     client = _client(str(s.db_dir))
     exists = s.collection in {c.name for c in client.list_collections()}
     if rebuild and exists:
+        # Drop the record first: if the rebuild is interrupted, the next run sees no
+        # record and starts over instead of trusting a list of files that are gone.
+        _state_path(s).unlink(missing_ok=True)
         client.delete_collection(s.collection)
         exists = False
     now = datetime.now(UTC).isoformat(timespec="seconds")

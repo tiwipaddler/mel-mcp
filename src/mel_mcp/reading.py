@@ -27,15 +27,12 @@ DOCUMENT_TYPES = (".pdf", ".odt")
 
 
 def list_documents(docs_dir: Path) -> list[Path]:
-    """Every PDF and OpenDocument text file under docs_dir."""
+    """Every PDF and OpenDocument text file under docs_dir (none is a valid answer)."""
     if not docs_dir.exists():
         raise FileNotFoundError(f"{docs_dir} does not exist. Create it and add your documents.")
-    paths = sorted(
+    return sorted(
         p for p in docs_dir.rglob("*") if p.suffix.lower() in DOCUMENT_TYPES and p.is_file()
     )
-    if not paths:
-        raise FileNotFoundError(f"No PDF or .odt files found in {docs_dir}.")
-    return paths
 
 
 def _md5(text: str, length: int) -> str:

@@ -48,6 +48,10 @@ def find_documents(s: Settings) -> dict[str, tuple]:
         meta = doc_metadata(path, s.docs_dir, manifest)
         docs[meta["source"]] = (path, meta)
     print(f"  {len(docs)} document(s) in {s.docs_dir}; {len(manifest)} described in the manifest")
+    if not docs:
+        print(
+            f"  Warning: no PDF or .odt files in {s.docs_dir}. Anything indexed before is removed."
+        )
     if unlisted := sorted(set(docs) - set(manifest)):
         print(f"  Warning: not in the manifest, so they can't be filtered: {unlisted}")
     if missing := sorted(set(manifest) - set(docs)):
@@ -167,7 +171,9 @@ def main(argv: list[str] | None = None) -> None:
         progress=_progress,
     )
 
-    kept = {k: v for k, v in state.items() if k not in plan.removed and k not in failed}
+    # A report that failed to read keeps its old fingerprint: its old passages are still in
+    # the index, and the record is what lets a later run remove them if the file goes.
+    kept = {k: v for k, v in state.items() if k not in plan.removed}
     new_state = {**kept, **{src: docs[src][1]["fingerprint"] for src in to_index}}
     save_state(new_state, s)
 

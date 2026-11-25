@@ -181,3 +181,34 @@ def test_rebuild_flag_and_interrupted_runs(setup, capsys):
     out = run(capsys)
     assert "no record of which files it holds" in out
     assert DocumentIndex(setup, FakeEmbedder()).info()["chunks_indexed"] == 3
+
+
+def test_a_report_that_fails_to_read_can_still_be_removed_later(setup, capsys):
+    run(capsys)
+    broken = setup.docs_dir / "iati" / "b.pdf"
+    broken.write_bytes(b"not a pdf")
+    assert "could not be read" in run(capsys)
+    broken.unlink()
+    assert "1 removed" in run(capsys)
+    assert DocumentIndex(setup, FakeEmbedder()).info()["chunks_indexed"] == 2
+
+
+def test_an_interrupted_rebuild_is_started_again(setup, capsys, monkeypatch):
+    run(capsys)
+    embed = CountingEmbedder.embed
+
+    def fail(self, texts):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(CountingEmbedder, "embed", fail)
+    with pytest.raises(KeyboardInterrupt):
+        run(capsys, "--rebuild")
+    monkeypatch.setattr(CountingEmbedder, "embed", embed)
+    assert "no record of which files it holds" in run(capsys)
+    assert DocumentIndex(setup, FakeEmbedder()).info()["chunks_indexed"] == 3
+
+
+def test_an_empty_folder_is_reported_not_an_error(setup, capsys):
+    for pdf in setup.docs_dir.rglob("*.pdf"):
+        pdf.unlink()
+    assert "no PDF or .odt files" in run(capsys)
