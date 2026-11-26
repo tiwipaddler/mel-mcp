@@ -40,11 +40,13 @@ Summariser = Callable[[list[dict]], str]
 
 
 def plan_pairs(engine: SurveyData) -> list[list[str]]:
-    """Consecutive rounds of each project, ordered by study phase."""
+    """Consecutive rounds of each project, ordered by study phase. Datasets with no project
+    are left out, since two unrelated surveys would otherwise be compared; pass --pair to
+    compare them."""
     by_project: dict[str, list[dict]] = {}
     for ds in engine.list_datasets():
-        if ds.get("study_phase") in PHASE_ORDER:
-            by_project.setdefault(ds.get("project") or "(no project)", []).append(ds)
+        if ds.get("project") and ds.get("study_phase") in PHASE_ORDER:
+            by_project.setdefault(ds["project"], []).append(ds)
     pairs = []
     for rounds in by_project.values():
         rounds.sort(key=lambda d: (PHASE_ORDER[d["study_phase"]], d.get("reporting_year", "")))
@@ -182,12 +184,13 @@ def write_last_run(reports_dir: Path, status: str, pairs: list, report: str | No
 
 
 def write_report(state: DriftState, reports_dir: Path) -> Path:
-    stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
+    now = datetime.now(UTC)
     reports_dir.mkdir(parents=True, exist_ok=True)
-    md_path = reports_dir / f"drift_{stamp}.md"
+    # Microseconds keep two runs in the same second apart, and names still sort by time.
+    md_path = reports_dir / f"drift_{now:%Y%m%d-%H%M%S-%f}.md"
 
     lines = [
-        f"# Survey drift report ({stamp} UTC)",
+        f"# Survey drift report ({now:%Y-%m-%d %H:%M:%S} UTC)",
         "",
         drift.PUBLIC_ONLY,
         "",

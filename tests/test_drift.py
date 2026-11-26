@@ -68,6 +68,27 @@ def test_agent_plans_consecutive_rounds(engine):
     assert plan_pairs(engine) == [["test_baseline", "test_endline"]]
 
 
+def test_datasets_without_a_project_are_not_paired(engine, monkeypatch):
+    datasets = [
+        {"name": "a", "study_phase": "baseline"},
+        {"name": "b", "study_phase": "endline"},
+        {"name": "c", "project": "Dairy", "study_phase": "baseline"},
+        {"name": "d", "project": "Dairy", "study_phase": "endline"},
+    ]
+    monkeypatch.setattr(engine, "list_datasets", lambda: datasets)
+    assert plan_pairs(engine) == [["c", "d"]]
+
+
+def test_two_runs_in_the_same_second_keep_both_reports(engine, prepared_data):
+    from mel_mcp.agents.drift_agent import write_report
+
+    state = {"summary": "s", "findings": [], "pairs": []}
+    first = write_report(state, prepared_data.reports_dir)
+    second = write_report(state, prepared_data.reports_dir)
+    assert first != second and first.exists() and second.exists()
+    assert drift.latest_report(prepared_data.reports_dir) == second
+
+
 def test_agent_raises_an_alert_with_affected_readers(engine, prepared_data):
     (prepared_data.data_dir / "variable_usage.csv").write_text(
         "reader,dataset,variable\nIndicator 2.3 fertiliser use,,used_fert\n"
