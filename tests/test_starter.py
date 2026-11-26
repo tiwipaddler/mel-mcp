@@ -192,3 +192,34 @@ def test_build_without_a_tracker_writes_nothing(maintainer):
     with pytest.raises(SystemExit, match="No indicator tracker"):
         starter.build(s, pack, opener=the_web(s, "c1.pdf"), pause=0)
     assert not (pack / "manifest.csv").exists()
+
+
+def test_downloads_from_one_site_are_spaced_out():
+    waits, now = [], [0.0]
+    pacer = starter.Pacer(
+        15,
+        fake_web(
+            {"https://a.org/1": b"%PDF", "https://a.org/2": b"%PDF", "https://b.org/1": b"%PDF"}
+        ),
+        sleep=waits.append,
+        clock=lambda: now[0],
+    )
+    pacer.download("https://a.org/1")
+    now[0] = 4.0
+    pacer.download("https://b.org/1")  # another site: no wait
+    pacer.download("https://a.org/2")
+    assert waits == [11.0]
+
+
+def test_a_refused_download_is_tried_once_more(fresh_copy):
+    s, pack, opener = fresh_copy
+    refusals = []
+
+    def busy(request, timeout):
+        if request.full_url.endswith("b1.pdf") and not refusals:
+            refusals.append(request.full_url)
+            raise HTTPError(request.full_url, 403, "Forbidden", {}, None)
+        return io.BytesIO((s.docs_dir.parent.parent / "docs" / "a1.pdf").read_bytes())
+
+    assert starter.load(s, pack, busy, pause=0) == 3
+    assert refusals == ["https://example.org/b1.pdf"]

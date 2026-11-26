@@ -14,6 +14,7 @@ import shutil
 import tempfile
 import time
 from pathlib import Path
+from urllib.parse import urlparse
 
 from mel_mcp import ingest
 from mel_mcp.config import ROOT, Settings, settings
@@ -25,10 +26,37 @@ from mel_mcp.reading import load_document
 from mel_mcp.tables import read_csv
 
 PACK = ROOT / "starter" / "kenya-agriculture"
-PAUSE_SECONDS = 1  # between downloads, to be polite to the publishers' servers
+# Between downloads from the same site. Some sites, such as the African Development Bank's,
+# refuse downloads that come faster; one second apart, most of theirs failed.
+SITE_GAP_SECONDS = 15
 PACK_FILES = ("manifest.csv", "indicators.csv")
 REPORT_LIST = "reports.txt"  # the links chosen for the pack, one per line
 MIN_TEXT = 2000  # characters; less usually means a scanned report with no text layer
+
+
+class Pacer:
+    """Downloads with a gap between requests to the same site, and tries a refused one again."""
+
+    def __init__(self, gap: float, opener=None, sleep=time.sleep, clock=time.monotonic):
+        self.gap, self.opener, self.sleep, self.clock = gap, opener, sleep, clock
+        self.last: dict[str, float] = {}
+
+    def _wait(self, url: str) -> None:
+        site = urlparse(url).netloc
+        if site in self.last:
+            self.sleep(max(0.0, self.last[site] + self.gap - self.clock()))
+        self.last[site] = self.clock()
+
+    def download(self, url: str) -> tuple[bytes, str]:
+        self._wait(url)
+        try:
+            return download_document(url, self.opener)
+        except SkipDocument as exc:
+            if str(exc) not in ("HTTP 403", "HTTP 429"):
+                raise
+        self.sleep(4 * self.gap)  # a busy site often lets the same request through a minute later
+        self._wait(url)
+        return download_document(url, self.opener)
 
 
 def _stem(file: str) -> str:
@@ -55,7 +83,7 @@ def _downloaded(target: Path) -> Path | None:
 
 
 def load(
-    s: Settings = settings, pack: Path = PACK, opener=None, pause: float = PAUSE_SECONDS
+    s: Settings = settings, pack: Path = PACK, opener=None, pause: float = SITE_GAP_SECONDS
 ) -> int:
     """Download the pack's reports into the docs folder and copy its tracker. Returns the
     number of reports now available. Running it again fetches only reports that are missing.
@@ -73,13 +101,14 @@ def load(
         print("  The starter pack is already loaded; fetching any reports that are missing.")
 
     rows = read_csv(pack / "manifest.csv")
+    pacer = Pacer(pause, opener)
     entries = []
     for i, row in enumerate(rows, 1):
         # Each link is shown so you can open the report at its source and check it yourself.
         target = _downloaded(s.docs_dir / row["file"])
         if target is None:
             try:
-                data, kind = download_document(row["url"], opener)
+                data, kind = pacer.download(row["url"])
             except SkipDocument as exc:
                 print(f"  [{i}/{len(rows)}] {row['title'][:60]}: skipped ({exc})")
                 print(f"         {row['url']}")
@@ -87,7 +116,6 @@ def load(
             target = (s.docs_dir / row["file"]).with_suffix(f".{kind}")
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(data)
-            time.sleep(pause)
         print(f"  [{i}/{len(rows)}] {row['title'][:60]}")
         print(f"         {row['url']}")
         entries.append({**row, "file": target.relative_to(s.docs_dir).as_posix()})
@@ -123,10 +151,10 @@ def read_report_list(path: Path) -> list[str]:
     return links
 
 
-def check_report(url: str, opener=None) -> str | None:
+def check_report(url: str, pacer: Pacer) -> str | None:
     """Why a tester couldn't use this link, or None if it downloads a readable report."""
     try:
-        data, kind = download_document(url, opener)
+        data, kind = pacer.download(url)
     except SkipDocument as exc:
         return str(exc)
     with tempfile.TemporaryDirectory() as tmp:
@@ -147,7 +175,7 @@ def build(
     pack: Path = PACK,
     country: str = "Kenya",
     opener=None,
-    pause: float = PAUSE_SECONDS,
+    pause: float = SITE_GAP_SECONDS,
 ) -> list[dict]:
     """Write the pack from the links in reports.txt, with each report's details from the
     maintainer's manifest, and the tracker rows for `country`. Every link is downloaded and
@@ -174,14 +202,14 @@ def build(
     kept = [r for r in tracker if code in r.get("country", "").upper().replace(" ", "").split(";")]
 
     print(f"Checking {len(picked)} report link(s) the way a tester's computer will download them")
+    pacer = Pacer(pause, opener)
     failed = []
     for i, row in enumerate(picked, 1):
-        problem = check_report(row["url"], opener)
+        problem = check_report(row["url"], pacer)
         print(f"  [{i}/{len(picked)}] {'ok' if problem is None else 'FAILED'}: {row['title'][:60]}")
         print(f"         {row['url']}" + (f"\n         {problem}" if problem else ""))
         if problem:
             failed.append(row["url"])
-        time.sleep(pause)
     if failed:
         raise SystemExit(
             f"{len(failed)} link(s) failed, so nothing was written. Replace them in "
