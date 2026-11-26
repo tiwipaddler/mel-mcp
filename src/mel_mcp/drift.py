@@ -153,21 +153,27 @@ def compare(engine: SurveyData, earlier: str, later: str) -> dict:
                     after=new["label"],
                 )
             )
-        if "categories" in old and "categories" in new and old["categories"] != new["categories"]:
-            gone = sorted(set(old["categories"]) - set(new["categories"]))
-            new_cats = sorted(set(new["categories"]) - set(old["categories"]))
-            overlap = set(old["categories"]) & set(new["categories"])
-            findings.append(
-                _finding(
-                    "recoded",
-                    "high" if not overlap else "medium",
-                    var,
-                    f"'{var}' categories changed"
-                    + (" completely (codes may have been recoded)." if not overlap else "."),
-                    no_longer_used=gone,
-                    new_categories=new_cats,
+        if "categories" in old and "categories" in new:
+            # Small categories aren't listed (see SurveyData.profile). A category missing from
+            # one list may just have fallen below the minimum size, so only changes the other
+            # round's full list can confirm count.
+            old_cats, new_cats = set(old["categories"]), set(new["categories"])
+            gone = sorted(old_cats - new_cats) if not new.get("rare_categories") else []
+            added = sorted(new_cats - old_cats) if not old.get("rare_categories") else []
+            if gone or added:
+                complete = not old.get("rare_categories") and not new.get("rare_categories")
+                recoded = complete and not old_cats & new_cats
+                findings.append(
+                    _finding(
+                        "recoded",
+                        "high" if recoded else "medium",
+                        var,
+                        f"'{var}' categories changed"
+                        + (" completely (codes may have been recoded)." if recoded else "."),
+                        no_longer_used=gone,
+                        new_categories=added,
+                    )
                 )
-            )
         if old.get("mean") and new.get("mean"):
             ratio = new["mean"] / old["mean"]
             if ratio >= UNIT_CHANGE_RATIO or ratio <= 1 / UNIT_CHANGE_RATIO:

@@ -212,3 +212,30 @@ def test_a_jump_of_exactly_twenty_points_is_reported(engine, monkeypatch):
     monkeypatch.setattr(engine, "dictionary", lambda name: [{"variable": "x", "role": "measure"}])
     [finding] = drift.compare(engine, "a", "b")["findings"]
     assert finding["type"] == "missingness_jump" and "10% to 30%" in finding["detail"]
+
+
+def _categories(engine, monkeypatch, earlier, later):
+    def profile(name):
+        cats, rare = earlier if name == "a" else later
+        p = {"role": "group", "label": "", "type": "VARCHAR", "n": 400, "missing_share": 0.0}
+        return {"sex": {**p, "categories": cats, "rare_categories": rare}}
+
+    monkeypatch.setattr(engine, "profile", profile)
+    monkeypatch.setattr(engine, "dictionary", lambda name: [{"variable": "sex", "role": "group"}])
+    return drift.compare(engine, "a", "b")["findings"]
+
+
+def test_a_category_crossing_the_minimum_size_is_not_a_recode(engine, monkeypatch):
+    # A=9, B=11 in one round and A=11, B=9 in the next: the same two categories.
+    assert _categories(engine, monkeypatch, (["B"], 1), (["A"], 1)) == []
+
+
+def test_recodes_are_still_found_when_every_category_is_listed(engine, monkeypatch):
+    [finding] = _categories(engine, monkeypatch, (["Female", "Male"], 0), (["F", "M"], 0))
+    assert finding["type"] == "recoded" and finding["severity"] == "high"
+
+
+def test_new_categories_are_reported_when_the_earlier_list_is_complete(engine, monkeypatch):
+    [finding] = _categories(engine, monkeypatch, (["Female", "Male"], 0), (["F", "M"], 2))
+    assert finding["severity"] == "medium" and finding["evidence"]["new_categories"] == ["F", "M"]
+    assert finding["evidence"]["no_longer_used"] == []  # they may only have become rare
