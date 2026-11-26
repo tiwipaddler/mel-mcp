@@ -138,3 +138,12 @@ def test_pdf_page_labels_are_kept(tmp_path):
     pages = load_pdf(labelled, {"title": "Report"})
     assert [p.metadata["page_label"] for p in pages] == ["i", "1", "2"]
     assert [p.metadata["page_number"] for p in pages] == [1, 2, 3]
+
+
+def test_citations_link_to_the_cited_page():
+    meta = {"title": "Endline", "page_number": 4, "page_label": "4", "study_phase": "endline"}
+    pdf = {**meta, "url": "https://x.org/report.pdf"}
+    assert citation(pdf) == "Endline, p. 4 (endline), https://x.org/report.pdf#page=4"
+    odt = {**meta, "url": "https://x.org/review.odt"}
+    assert citation(odt) == "Endline, p. 4 (endline), https://x.org/review.odt"
+    assert citation(meta) == "Endline, p. 4 (endline)"  # no link known

@@ -171,7 +171,7 @@ def register_document_tools(mcp: FastMCP, backend: Backend) -> None:
         """Search evaluation reports, learning briefs and transcripts for passages
         relevant to a question. Filter by study phase, source type, country, project
         or year to keep findings from different phases apart. Each result has a
-        citation (title, page, phase, n) to use in the answer."""
+        citation (title, page, phase, n and the report's link) to use in the answer."""
         filters = {
             "study_phase": study_phase,
             "source_type": source_type,
