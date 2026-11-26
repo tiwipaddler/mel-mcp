@@ -214,6 +214,7 @@ async def test_evidence_summary_prompt_checks_every_cited_project(server):
         assert (
             "the completion report first" in text and "missing from the tracker or is in it" in text
         )
+        assert "Sources list: every report and IATI activity cited, each with its link" in text
 
 
 @pytest.mark.anyio

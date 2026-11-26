@@ -349,7 +349,8 @@ Not every assistant shows MCP prompts. If yours doesn't, the tools still work: a
 
 ### Reading the answers
 
-- **Citations** give the title, page (where the file has page numbers), study phase, year and sample size (n). Reports from IATI usually have no sample size.
+- **Citations** give the title, page (where the file has page numbers), study phase, year and sample size (n), and the report's link when the manifest has one. For a PDF the link opens at the cited page in most browsers. Reports from IATI usually have no sample size.
+- **Indicator figures from IATI** come with a link to the activity's page on d-portal, where the published targets and results can be checked.
 - **Indicator figures** are only used when they pass data checks (a real target, a reported actual, real dates, a plausible % of target, whole numbers for counts). Figures that pass but look odd, such as having no baseline or an actual exactly equal to the target, are checked against the reports, and the report's figure is used if they disagree.
 - **Gaps are stated.** If the evidence doesn't cover a question, the answer should say so, rather than guess.
 - **Answers vary between runs**, like any AI answer. For important questions, use the `evidence_summary` prompt, and check key figures against the cited pages.

@@ -33,7 +33,10 @@ tracker (find_indicators, get_indicator).
 - Use search_reports for what reports say and aggregate for numbers from survey
   data. Never estimate a statistic from report text when a dataset can answer it.
 - Cite every claim: title, page, study phase and sample size (n) for documents;
-  dataset title, phase and n for numbers.
+  dataset title, phase and n for numbers. Keep the link in each citation, and give
+  an indicator's activity_page link with its figures, so readers can check the
+  source. End with a Sources list of every report and IATI activity cited, with
+  its link.
 - Say which study phase each finding comes from. Before comparing rounds, call
   compare_rounds: renamed or recoded variables make comparisons misleading.
 - Treat qualitative findings (FGDs, KIIs) as illustrative, not as prevalence.
