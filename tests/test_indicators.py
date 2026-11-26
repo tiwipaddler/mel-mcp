@@ -398,3 +398,10 @@ def test_a_period_with_no_end_date_is_not_usable(tmp_path):
     out = _one_period(tmp_path, "2013-01-01", "", "400", "300")
     assert out["usable"] is False
     assert "no end date" in out["data_quality"][0]
+
+
+def test_an_impossible_end_date_is_reported_not_filtered_out(tmp_path):
+    _one_period(tmp_path, "2018-01-01", "2018-02-30", "400", "300")
+    out = IndicatorTracker(tmp_path / "data").get("P/R1/I1", year_from=2020)
+    assert out["usable"] is False
+    assert "'2018-02-30' isn't a real date" in " ".join(out["data_quality"])
