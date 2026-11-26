@@ -1,14 +1,12 @@
 # Reports in the Kenya starter pack, one link per line, in the order they load.
-# Each link was downloaded and read by link-check on 26 November 2026. To change the pack,
-# edit this list and run `mel-starter build`; it checks every link again before writing.
-# The African Development Bank and IFAD are left out: their sites refuse some or all
-# downloads that don't come from a web browser.
+# Each link was downloaded and read on 26 November 2026. To change the pack, edit this list
+# and run `mel-starter build`; it checks every link again before writing.
+# IFAD is left out: its site's security settings refuse Python's connections.
 
 # Kenya Water Security and Climate Resilience Project (World Bank). Has indicator data.
 https://documents.worldbank.org/curated/en/099122425102515384/pdf/BOSIB-24e62aba-6021-41bf-82e8-bc2d425ba9ef.pdf
 https://documents.worldbank.org/curated/en/099051526122584470/pdf/P117635-9bf7728d-7c1c-44c3-ba0a-c460082a1291.pdf
 https://documents.worldbank.org/curated/en/099041625113516227/pdf/P117635-5ee50c63-8485-435c-be95-67eb50bffc19.pdf
-http://documents.worldbank.org/curated/en/099052624224539467/pdf/P1176351c56d420981b5021dd82f7d1e3ee.pdf
 http://documents.worldbank.org/curated/en/099110423052036368/pdf/P11763508669340d00b2d70cc69f10abc2a.pdf
 
 # Small-scale irrigation, Mount Kenya (KfW): ex-post evaluation, English version
@@ -27,7 +25,6 @@ https://iatipublisher-prod.s3.amazonaws.com/document-link/414/Sustainable-Coolin
 # Commercial Agriculture for Smallholders and Agribusiness (FCDO): annual reviews
 http://iati.fcdo.gov.uk/iati_documents/S20511835.odt
 http://iati.fcdo.gov.uk/iati_documents/D0005587.odt
-http://iati.fcdo.gov.uk/iati_documents/D0003522.odt
 http://iati.fcdo.gov.uk/iati_documents/D0001230.odt
 
 # Strategic Partnership on Agriculture and Food Systems for Nutrition (FCDO): annual reviews
@@ -40,11 +37,17 @@ http://iati.fcdo.gov.uk/iati_documents/58690385.odt
 http://iati.fcdo.gov.uk/iati_documents/D0000907.odt
 http://iati.fcdo.gov.uk/iati_documents/53175005.odt
 
-# Africa Technology and Innovation Partnerships (FCDO): annual reviews
-http://iati.fcdo.gov.uk/iati_documents/S30070438.odt
-http://iati.fcdo.gov.uk/iati_documents/D0005140.odt
-
-# Africa Regional Climate and Nature Programme (FCDO): evaluation, management response, annual review
+# Africa Regional Climate and Nature Programme (FCDO): evaluation
 http://iati.fcdo.gov.uk/iati_documents/S30080860.odt
-http://iati.fcdo.gov.uk/iati_documents/S30080859.odt
-http://iati.fcdo.gov.uk/iati_documents/S30080836.odt
+
+# African Development Bank projects: completion and progress reports. All three have
+# indicator data. Their site refuses downloads that come too fast; the loader spaces them out.
+# Small-scale Irrigation and Value Addition Project
+https://www.afdb.org/sites/default/files/documents/projects-and-operations/kenya-smallscale_irrigation_agriculture_value_chain_development-_p-ke-aaz-009-pcr-octobre_2026.pdf
+https://www.afdb.org/sites/default/files/documents/projects-and-operations/kenya_-_small_scale_irrigation_and_value_addition_project_-_ipr_october_2025.pdf
+# African Emergency Food Production Facility (AEFPF-K)
+https://www.afdb.org/sites/default/files/documents/projects-and-operations/kenya-_african_emergency_food_production_facility-kenya_aefpf-k-_p-ke-a00-002-pcr-november_2024.pdf
+https://www.afdb.org/sites/default/files/documents/projects-and-operations/kenya_-_african_emergency_food_production_facility_aefpf-k_-_p-ke-a00-002_-_ipr_april_2024.pdf
+# Enable Youth
+https://www.afdb.org/sites/default/files/documents/projects-and-operations/kenya-_enable_youth_kenya-_p-ke-aaz-014-ipr-june_2025.pdf
+https://www.afdb.org/sites/default/files/documents/projects-and-operations/kenya_-_enable_youth_kenya_-_p-ke-aaz-014_-_ipr_december_2024_.pdf
