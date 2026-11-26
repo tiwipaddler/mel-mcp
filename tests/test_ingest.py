@@ -208,7 +208,10 @@ def test_an_interrupted_rebuild_is_started_again(setup, capsys, monkeypatch):
     assert DocumentIndex(setup, FakeEmbedder()).info()["chunks_indexed"] == 3
 
 
-def test_an_empty_folder_is_reported_not_an_error(setup, capsys):
+def test_emptying_the_folder_empties_the_index(setup, capsys):
+    run(capsys)
     for pdf in setup.docs_dir.rglob("*.pdf"):
         pdf.unlink()
     assert "no PDF or .odt files" in run(capsys)
+    with pytest.raises(RuntimeError, match="index is empty"):
+        DocumentIndex(setup, FakeEmbedder())
