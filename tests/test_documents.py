@@ -88,7 +88,9 @@ def test_phase_and_year_filters_keep_phases_apart(index):
 
 def test_citation_includes_phase_year_and_n(index):
     hit = index.search("barriers", where=build_filter({"study_phase": "baseline"}))[0]
-    assert citation(hit.metadata) == "Test Baseline Report, p. 3 (baseline, 2021, n=1,200)"
+    assert citation(hit.metadata) == (
+        "Test Baseline Report, p. 3 (baseline, 2021, n=1,200), documents folder: baseline.pdf"
+    )
 
 
 def test_index_info_shows_freshness(index):
@@ -146,4 +148,6 @@ def test_citations_link_to_the_cited_page():
     assert citation(pdf) == "Endline, p. 4 (endline), https://x.org/report.pdf#page=4"
     odt = {**meta, "url": "https://x.org/review.odt"}
     assert citation(odt) == "Endline, p. 4 (endline), https://x.org/review.odt"
-    assert citation(meta) == "Endline, p. 4 (endline)"  # no link known
+    assert citation(meta) == "Endline, p. 4 (endline)"  # nothing to point to
+    own = {**meta, "source": "surveys/endline.pdf"}
+    assert citation(own) == "Endline, p. 4 (endline), documents folder: surveys/endline.pdf"

@@ -273,7 +273,9 @@ def matches(meta: dict, filters: dict, year_from: int | None, year_to: int | Non
 
 
 def citation(meta: dict) -> str:
-    """E.g. 'Endline Report, p. 4 (endline, 2023, n=1,150), https://example.org/r.pdf#page=4'."""
+    """E.g. 'Endline Report, p. 4 (endline, 2023, n=1,150), https://example.org/r.pdf#page=4'.
+    A report with no link in the manifest is placed by its file instead, so it can still be
+    found: '..., documents folder: surveys/endline.pdf'."""
     label = meta.get("title") or meta.get("source", "unknown")
     paged = meta.get("page_label") != PAGE_UNKNOWN
     if paged:
@@ -282,7 +284,9 @@ def citation(meta: dict) -> str:
     if isinstance(meta.get("sample_size"), int):
         details.append(f"n={meta['sample_size']:,}")
     text = f"{label} ({', '.join(details)})" if details else label
-    return f"{text}, {source_link(meta, paged)}" if meta.get("url") else text
+    if meta.get("url"):
+        return f"{text}, {source_link(meta, paged)}"
+    return f"{text}, documents folder: {meta['source']}" if meta.get("source") else text
 
 
 def source_link(meta: dict, paged: bool = True) -> str:

@@ -69,13 +69,13 @@ def test_odt_pages_follow_saved_page_breaks_otherwise_no_page_in_citations(tmp_p
     )
     pages = load_odt(tmp_path / "paged.odt", {"source": "paged.odt", "title": "Paged"})
     assert [p.text for p in pages] == ["Page one", "Page two"]
-    assert citation(pages[1].metadata) == "Paged, p. 2"
+    assert citation(pages[1].metadata) == "Paged, p. 2, documents folder: paged.odt"
 
     write_odt(tmp_path / "flat.odt", "<text:p>All on one page</text:p>")
     flat = load_odt(
         tmp_path / "flat.odt", {"source": "flat.odt", "title": "Flat", "study_phase": "endline"}
     )
-    assert citation(flat[0].metadata) == "Flat (endline)"  # no made-up page number
+    assert citation(flat[0].metadata).startswith("Flat (endline),")  # no made-up page number
 
 
 def test_odt_links_get_odt_names_and_annual_reviews_are_monitoring():
@@ -155,7 +155,9 @@ def test_odt_files_are_indexed_and_broken_files_are_skipped(mel_settings, monkey
     hits = DocumentIndex(s, FakeEmbedder()).search("farmers trained target actual", top_k=5)
     review = next(h for h in hits if h.metadata["source"] == "iati/review.odt")
     assert "Farmers trained | 5000 | 5400" in review.text
-    assert citation(review.metadata) == "FCDO Annual Review (monitoring)"
+    assert citation(review.metadata) == (
+        "FCDO Annual Review (monitoring), documents folder: iati/review.odt"
+    )
 
     ingest.main([])  # the broken file is tried again; the others are not re-embedded
     assert "broken.odt: could not be read" in capsys.readouterr().out
