@@ -16,7 +16,7 @@ cd mel-mcp
 ./setup.sh --starter
 ```
 
-This installs everything, runs the tests and loads the Kenya starter pack: about 25 real reports from Kenyan agriculture projects since 2020, downloaded from their publishers, and those projects' indicator data. Indexing the reports takes from a few minutes on a recent laptop to about half an hour on an older one; the progress shows the time left.
+This installs everything, runs the tests and loads the Kenya starter pack: 25 real reports from 12 Kenyan agriculture projects since 2020, downloaded from their publishers, and those projects' indicator data. The pack comes with the repo (`starter/kenya-agriculture`), so there is nothing extra to download first. As each report downloads, its link is shown, so you can open it at the source and check the answers against it. Indexing the reports takes from a few minutes on a recent laptop to about half an hour on an older one; the progress shows the time left.
 
 Then connect your assistant ([step 6](#6-connect-an-assistant)) and ask:
 
@@ -483,7 +483,7 @@ plan ─► detect ─┬─ nothing changed ─► record_all_clear ─► END
 | `mel-drift` | Runs the drift agent once |
 | `mel-mcp-config <assistant>` | Prints the settings that connect an assistant (step 6) |
 | `mel-starter load` | Downloads the Kenya starter pack's reports and indexes them (`setup.sh --starter` runs it) |
-| `mel-starter build` | Maintainers: rebuilds the starter pack from your own manifest and tracker |
+| `mel-starter build` | Maintainers: checks every link in `starter/kenya-agriculture/reports.txt`, then rebuilds the pack from them |
 
 Every command accepts `--help`.
 
