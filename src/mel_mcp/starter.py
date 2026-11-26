@@ -5,26 +5,30 @@ the indicator tracker. The reports themselves are downloaded from their sources,
 publishers don't allow them to be redistributed.
 
 Run:  mel-starter load    # download the reports, then build the search index
-      mel-starter build   # maintainers: make the pack from your own manifest and tracker
+      mel-starter build   # maintainers: make the pack from reports.txt and your manifest
 """
 
 import argparse
 import csv
 import shutil
+import tempfile
 import time
 from pathlib import Path
 
 from mel_mcp import ingest
 from mel_mcp.config import ROOT, Settings, settings
-from mel_mcp.countries import canonical_countries, canonical_country, country_code
+from mel_mcp.countries import country_code
 from mel_mcp.documents import DocumentIndex
 from mel_mcp.download_docs import SkipDocument, download_document
 from mel_mcp.metadata import MANIFEST_COLUMNS, ManifestError, append_to_manifest, load_manifest
+from mel_mcp.reading import load_document
 from mel_mcp.tables import read_csv
 
 PACK = ROOT / "starter" / "kenya-agriculture"
 PAUSE_SECONDS = 1  # between downloads, to be polite to the publishers' servers
 PACK_FILES = ("manifest.csv", "indicators.csv")
+REPORT_LIST = "reports.txt"  # the links chosen for the pack, one per line
+MIN_TEXT = 2000  # characters; less usually means a scanned report with no text layer
 
 
 def _stem(file: str) -> str:
@@ -104,38 +108,58 @@ def _passages_per_report(s: Settings) -> dict[str, int]:
     return counts
 
 
-def _spread_across_projects(rows: list[dict], limit: int) -> list[dict]:
-    """Newest reports first, taking one per project in turn so the pack covers many projects."""
-    by_project: dict[str, list[dict]] = {}
-    for row in sorted(rows, key=lambda r: r.get("reporting_year", 0), reverse=True):
-        by_project.setdefault(row.get("project", ""), []).append(row)
-    picked = []
-    while len(picked) < limit and any(by_project.values()):
-        for project_rows in by_project.values():
-            if project_rows and len(picked) < limit:
-                picked.append(project_rows.pop(0))
-    return picked
+def read_report_list(path: Path) -> list[str]:
+    """The links in reports.txt, in order. Blank lines and lines starting with # are notes."""
+    if not path.exists():
+        raise SystemExit(f"No report list at {path}. List one report link per line.")
+    links = [line.strip() for line in path.read_text(encoding="utf-8").splitlines()]
+    links = [link for link in links if link and not link.startswith("#")]
+    if repeated := sorted({link for link in links if links.count(link) > 1}):
+        raise SystemExit(f"Listed more than once in {path.name}: {', '.join(repeated)}")
+    return links
+
+
+def check_report(url: str, opener=None) -> str | None:
+    """Why a tester couldn't use this link, or None if it downloads a readable report."""
+    try:
+        data, kind = download_document(url, opener)
+    except SkipDocument as exc:
+        return str(exc)
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / f"check.{kind}"
+        path.write_bytes(data)
+        try:
+            pages = load_document(path, {})
+        except Exception as exc:  # whatever the PDF or .odt reader raises for a broken file
+            return f"can't be read ({type(exc).__name__})"
+    # Judged on all the text, not on pages: .odt files without saved page breaks are one page.
+    if sum(len(p.text.strip()) for p in pages) < MIN_TEXT:
+        return "little or no text (scanned?)"
+    return None
 
 
 def build(
     s: Settings = settings,
     pack: Path = PACK,
     country: str = "Kenya",
-    since: int = 2020,
-    limit: int = 25,
+    opener=None,
+    pause: float = PAUSE_SECONDS,
 ) -> list[dict]:
-    """Write the pack from the maintainer's manifest and tracker: reports with a source link,
-    from `since` on, for `country`, spread across projects."""
-    wanted = canonical_country(country)
-    candidates = [
-        {**meta, "file": source}
+    """Write the pack from the links in reports.txt, with each report's details from the
+    maintainer's manifest, and the tracker rows for `country`. Every link is downloaded and
+    read first, the way a tester's computer will; if any fails, nothing is written."""
+    links = read_report_list(pack / REPORT_LIST)
+    by_url = {
+        meta["url"]: {**meta, "file": source}
         for source, meta in load_manifest(s.manifest_file).items()
         if meta.get("url")
-        and meta.get("reporting_year", 0) >= since
-        and wanted in canonical_countries(meta.get("country"))
-        and (s.docs_dir / source).exists()
-    ]
-    picked = _spread_across_projects(candidates, limit)
+    }
+    if unknown := [link for link in links if link not in by_url]:
+        raise SystemExit(
+            f"Not in {s.manifest_file.name}, so there are no details to use for: "
+            + ", ".join(unknown)
+        )
+    picked = [by_url[link] for link in links]
 
     # Read everything before writing anything, so a missing tracker can't leave half a pack.
     tracker_file = s.data_dir / "indicators.csv"
@@ -144,6 +168,21 @@ def build(
     code = country_code(country)
     tracker = read_csv(tracker_file)
     kept = [r for r in tracker if code in r.get("country", "").upper().replace(" ", "").split(";")]
+
+    print(f"Checking {len(picked)} report link(s) the way a tester's computer will download them")
+    failed = []
+    for i, row in enumerate(picked, 1):
+        problem = check_report(row["url"], opener)
+        print(f"  [{i}/{len(picked)}] {'ok' if problem is None else 'FAILED'}: {row['title'][:60]}")
+        print(f"         {row['url']}" + (f"\n         {problem}" if problem else ""))
+        if problem:
+            failed.append(row["url"])
+        time.sleep(pause)
+    if failed:
+        raise SystemExit(
+            f"{len(failed)} link(s) failed, so nothing was written. Replace them in "
+            f"{REPORT_LIST}, or try again later if the site was only down."
+        )
 
     pack.mkdir(parents=True, exist_ok=True)
     with open(pack / "manifest.csv", "w", newline="", encoding="utf-8") as f:
@@ -170,14 +209,14 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Load or build the Kenya starter pack.")
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("load", help="Download the reports and build the search index")
-    make = commands.add_parser("build", help="Make the pack from your manifest and tracker")
-    make.add_argument("--country", default="Kenya")
-    make.add_argument("--since", type=int, default=2020, help="First reporting year (default 2020)")
-    make.add_argument("--limit", type=int, default=25, help="Most reports (default 25)")
+    make = commands.add_parser(
+        "build", help=f"Make the pack from {REPORT_LIST}, your manifest and your tracker"
+    )
+    make.add_argument("--country", default="Kenya", help="Whose indicators to include")
     args = parser.parse_args(argv)
 
     if args.command == "build":
-        build(country=args.country, since=args.since, limit=args.limit)
+        build(country=args.country)
         return
     print("Downloading the starter pack's reports from their publishers")
     if load():

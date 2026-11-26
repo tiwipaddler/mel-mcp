@@ -483,7 +483,7 @@ plan ─► detect ─┬─ nothing changed ─► record_all_clear ─► END
 | `mel-drift` | Runs the drift agent once |
 | `mel-mcp-config <assistant>` | Prints the settings that connect an assistant (step 6) |
 | `mel-starter load` | Downloads the Kenya starter pack's reports and indexes them (`setup.sh --starter` runs it) |
-| `mel-starter build` | Maintainers: rebuilds the starter pack from your own manifest and tracker |
+| `mel-starter build` | Maintainers: checks every link in `starter/kenya-agriculture/reports.txt`, then rebuilds the pack from them |
 
 Every command accepts `--help`.
 

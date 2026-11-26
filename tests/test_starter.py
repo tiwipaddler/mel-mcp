@@ -52,7 +52,9 @@ def maintainer(mel_settings, tmp_path):
         report("nolink.pdf", "Seeds", 2024, url=False),
     ]
     for row in rows:
-        make_pdf(mel_settings.docs_dir / row["file"], ["Delays in procurement"])
+        make_pdf(
+            mel_settings.docs_dir / row["file"], ["Delays in procurement held up works. " * 15] * 5
+        )
     write_manifest(mel_settings.manifest_file, rows)
     mel_settings.data_dir.mkdir(parents=True)
     (mel_settings.data_dir / "indicators.csv").write_text(
@@ -64,15 +66,6 @@ def maintainer(mel_settings, tmp_path):
     return mel_settings, tmp_path / "pack"
 
 
-def test_build_picks_recent_linked_reports_across_projects(maintainer):
-    s, pack = maintainer
-    picked = starter.build(s, pack, limit=4)
-    assert [r["file"] for r in picked] == ["c1.pdf", "a1.pdf", "b1.pdf", "a2.pdf"]
-    assert set(load_manifest(pack / "manifest.csv")) == {"c1.pdf", "a1.pdf", "b1.pdf", "a2.pdf"}
-    codes = [r["indicator_code"] for r in csv.DictReader(open(pack / "indicators.csv"))]
-    assert codes == ["K/R1/I1", "M/R1/I1"]  # Kenyan and multi-country, not Ugandan
-
-
 def fake_web(pages):
     def opener(request, timeout):
         if request.full_url not in pages:
@@ -82,10 +75,63 @@ def fake_web(pages):
     return opener
 
 
+def choose(pack, *files, note="# Chosen for the test"):
+    pack.mkdir(parents=True, exist_ok=True)
+    links = "\n".join(f"https://example.org/{f}" for f in files)
+    (pack / "reports.txt").write_text(f"{note}\n\n{links}\n", encoding="utf-8")
+
+
+def the_web(s, *files):
+    return fake_web({f"https://example.org/{f}": (s.docs_dir / f).read_bytes() for f in files})
+
+
+def test_build_writes_the_chosen_reports_in_order(maintainer, capsys):
+    s, pack = maintainer
+    choose(pack, "c1.pdf", "a3.pdf", "b1.pdf")
+    picked = starter.build(s, pack, opener=the_web(s, "c1.pdf", "a3.pdf", "b1.pdf"), pause=0)
+    assert [r["file"] for r in picked] == ["c1.pdf", "a3.pdf", "b1.pdf"]
+    assert list(load_manifest(pack / "manifest.csv")) == ["c1.pdf", "a3.pdf", "b1.pdf"]
+    codes = [r["indicator_code"] for r in csv.DictReader(open(pack / "indicators.csv"))]
+    assert codes == ["K/R1/I1", "M/R1/I1"]  # Kenyan and multi-country, not Ugandan
+    assert "https://example.org/a3.pdf" in capsys.readouterr().out
+
+
+def test_build_writes_nothing_when_a_link_fails(maintainer, capsys):
+    s, pack = maintainer
+    choose(pack, "c1.pdf", "a1.pdf")
+    with pytest.raises(SystemExit, match="1 link"):
+        starter.build(s, pack, opener=the_web(s, "c1.pdf"), pause=0)
+    assert "FAILED: Report a1.pdf" in capsys.readouterr().out
+    assert not (pack / "manifest.csv").exists()
+
+
+def test_build_refuses_reports_with_too_little_text(maintainer):
+    s, pack = maintainer
+    make_pdf(s.docs_dir / "a1.pdf", ["Scanned"])
+    choose(pack, "a1.pdf")
+    with pytest.raises(SystemExit, match="1 link"):
+        starter.build(s, pack, opener=the_web(s, "a1.pdf"), pause=0)
+
+
+def test_build_needs_every_chosen_link_in_the_manifest(maintainer):
+    s, pack = maintainer
+    choose(pack, "c1.pdf", "unknown.pdf")
+    with pytest.raises(SystemExit, match="unknown.pdf"):
+        starter.build(s, pack, opener=the_web(s, "c1.pdf"), pause=0)
+
+
+def test_a_link_chosen_twice_is_refused(maintainer):
+    s, pack = maintainer
+    choose(pack, "c1.pdf", "c1.pdf")
+    with pytest.raises(SystemExit, match="more than once"):
+        starter.build(s, pack, opener=the_web(s, "c1.pdf"), pause=0)
+
+
 @pytest.fixture
 def fresh_copy(maintainer, tmp_path):
     s, pack = maintainer
-    starter.build(s, pack, limit=3)
+    choose(pack, "c1.pdf", "a1.pdf", "b1.pdf")
+    starter.build(s, pack, opener=the_web(s, "c1.pdf", "a1.pdf", "b1.pdf"), pause=0)
     fresh = replace(
         s,
         docs_dir=tmp_path / "fresh" / "docs",
@@ -137,7 +183,8 @@ def test_an_incomplete_pack_changes_nothing(fresh_copy):
 
 def test_build_without_a_tracker_writes_nothing(maintainer):
     s, pack = maintainer
+    choose(pack, "c1.pdf")
     (s.data_dir / "indicators.csv").unlink()
     with pytest.raises(SystemExit, match="No indicator tracker"):
-        starter.build(s, pack)
-    assert not pack.exists()
+        starter.build(s, pack, opener=the_web(s, "c1.pdf"), pause=0)
+    assert not (pack / "manifest.csv").exists()
