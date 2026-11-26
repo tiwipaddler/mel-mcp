@@ -90,6 +90,7 @@ def test_projects_summary_shows_which_projects_have_usable_data(tracker):
         {
             "project": "Irrigation",
             "project_code": "AF",
+            "activity_page": "https://d-portal.iatistandard.org/ctrack.html#view=act&aid=AF",
             "countries": ["Kenya", "Uganda"],
             "usable_indicators": 1,
             "unusable_indicators": 0,
@@ -97,6 +98,7 @@ def test_projects_summary_shows_which_projects_have_usable_data(tracker):
         {
             "project": "Water Security",
             "project_code": "WB",
+            "activity_page": "https://d-portal.iatistandard.org/ctrack.html#view=act&aid=WB",
             "countries": ["Kenya"],
             "usable_indicators": 0,
             "unusable_indicators": 2,
@@ -405,3 +407,20 @@ def test_an_impossible_end_date_is_reported_not_filtered_out(tmp_path):
     out = IndicatorTracker(tmp_path / "data").get("P/R1/I1", year_from=2020)
     assert out["usable"] is False
     assert "'2018-02-30' isn't a real date" in " ".join(out["data_quality"])
+
+
+def test_iati_figures_link_to_their_activity_page(tmp_path):
+    data = tmp_path / "data"
+    data.mkdir()
+    (data / "indicators.csv").write_text(
+        TRACKER.splitlines()[0] + "\n"
+        "XI-IATI-WBTF-P117635/R1/I1,Farmers trained,unit,1,Water,KE,,,2022-01-01,2022-12-31,"
+        "400,310,IATI: XI-IATI-WBTF-P117635\n"
+        "OWN/R1/I1,Farmers trained,unit,1,Own,KE,,,2022-01-01,2022-12-31,400,310,Our M&E plan\n"
+    )
+    tracker = IndicatorTracker(data)
+    page = "https://d-portal.iatistandard.org/ctrack.html#view=act&aid=XI-IATI-WBTF-P117635"
+    assert tracker.get("XI-IATI-WBTF-P117635/R1/I1")["activity_page"] == page
+    assert tracker.get("OWN/R1/I1")["activity_page"] is None  # not from IATI: no page
+    summary = {p["project"]: p["activity_page"] for p in tracker.find("")["projects"]}
+    assert summary == {"Water": page, "Own": None}

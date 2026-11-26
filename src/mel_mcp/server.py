@@ -33,7 +33,12 @@ tracker (find_indicators, get_indicator).
 - Use search_reports for what reports say and aggregate for numbers from survey
   data. Never estimate a statistic from report text when a dataset can answer it.
 - Cite every claim: title, page, study phase and sample size (n) for documents;
-  dataset title, phase and n for numbers.
+  dataset title, phase and n for numbers. Keep the link a citation ends with, and
+  give an indicator's activity_page link with its figures, so readers can check the
+  source. End with a Sources list of every report and IATI activity cited. Give the
+  link where the tools give one. Otherwise say where it lives: the documents-folder
+  file the citation names, or, for an indicator figure with no activity_page, the
+  indicator tracker and the row's source. Never make up a link.
 - Say which study phase each finding comes from. Before comparing rounds, call
   compare_rounds: renamed or recoded variables make comparisons misleading.
 - Treat qualitative findings (FGDs, KIIs) as illustrative, not as prevalence.
@@ -171,7 +176,8 @@ def register_document_tools(mcp: FastMCP, backend: Backend) -> None:
         """Search evaluation reports, learning briefs and transcripts for passages
         relevant to a question. Filter by study phase, source type, country, project
         or year to keep findings from different phases apart. Each result has a
-        citation (title, page, phase, n) to use in the answer."""
+        citation (title, page, phase, n, and the report's link, or its file in the
+        documents folder when the manifest has no link) to use in the answer."""
         filters = {
             "study_phase": study_phase,
             "source_type": source_type,

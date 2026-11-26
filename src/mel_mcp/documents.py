@@ -273,11 +273,26 @@ def matches(meta: dict, filters: dict, year_from: int | None, year_to: int | Non
 
 
 def citation(meta: dict) -> str:
-    """E.g. 'Endline Report, p. 4 (endline, 2023, n=1,150)'."""
+    """E.g. 'Endline Report, p. 4 (endline, 2023, n=1,150), https://example.org/r.pdf#page=4'.
+    A report with no link in the manifest is placed by its file instead, so it can still be
+    found: '..., documents folder: surveys/endline.pdf'."""
     label = meta.get("title") or meta.get("source", "unknown")
-    if meta.get("page_label") != PAGE_UNKNOWN:
+    paged = meta.get("page_label") != PAGE_UNKNOWN
+    if paged:
         label += f", p. {meta.get('page_number', '?')}"
     details = [str(meta[k]) for k in ("study_phase", "reporting_year") if k in meta]
     if isinstance(meta.get("sample_size"), int):
         details.append(f"n={meta['sample_size']:,}")
-    return f"{label} ({', '.join(details)})" if details else label
+    text = f"{label} ({', '.join(details)})" if details else label
+    if meta.get("url"):
+        return f"{text}, {source_link(meta, paged)}"
+    return f"{text}, documents folder: {meta['source']}" if meta.get("source") else text
+
+
+def source_link(meta: dict, paged: bool = True) -> str:
+    """The report's link. For a PDF, #page=N makes most browsers open it at the cited page."""
+    url = meta["url"]
+    is_pdf = url.split("?")[0].lower().endswith(".pdf")
+    if paged and is_pdf and "#" not in url and meta.get("page_number"):
+        return f"{url}#page={meta['page_number']}"
+    return url

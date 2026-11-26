@@ -72,7 +72,9 @@ async def test_search_filters_cites_and_shows_freshness(server):
             )
         )
         assert [r["source"] for r in out["results"]] == ["endline.pdf"]
-        assert out["results"][0]["citation"] == "Test Endline Report, p. 1 (endline, 2023, n=1,150)"
+        assert out["results"][0]["citation"] == (
+            "Test Endline Report, p. 1 (endline, 2023, n=1,150), documents folder: endline.pdf"
+        )
         assert out["index"]["built_at"]
 
         out = payload(await client.call_tool("search_reports", {"query": "x", "country": "kenya"}))
@@ -214,6 +216,7 @@ async def test_evidence_summary_prompt_checks_every_cited_project(server):
         assert (
             "the completion report first" in text and "missing from the tracker or is in it" in text
         )
+        assert "Sources list" in text and "Never make up a link" in text
 
 
 @pytest.mark.anyio

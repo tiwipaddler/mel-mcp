@@ -8,7 +8,7 @@ EVIDENCE_STEPS = """\
 1. Search the reports from several angles (at least four search_reports calls).{filters} Keep \
 examples from the country asked about; label any passage about another country, or leave it out.
 2. Group the findings into themes. For each, give two or three examples with citations (title, \
-page where available, phase, year, n).
+page where available, phase, year, n, and the link or file the citation ends with).
 3. Show a matrix: one row per theme, one column per donor, marking which donors' documents \
 report it.
 4. Indicator check. Call find_indicators for every project you cited (by project name, or by \
@@ -33,6 +33,9 @@ tracker.
 confirmed. Grade the evidence separately for the reasons (themes) and for the size of the \
 shortfalls (strong, moderate, limited), one line each. Note gaps: places, phases, donors or \
 groups the evidence doesn't cover.
+8. End with a Sources list: every report and IATI activity cited, by its name. Give its link \
+where the tools give one; otherwise say where it lives (the documents-folder file the citation \
+names, or the indicator tracker and the row's source). Never make up a link.
 Do not present qualitative quotes as prevalence, or a single project as a pattern."""
 
 
@@ -94,7 +97,10 @@ def register_prompts(mcp: FastMCP) -> None:
             "explanations of under- or over-performance, and check the figures of every "
             "period with cautions. Where a report gives a different figure, use the report's.\n"
             "3. Show baseline, target, actual and % of target for each usable period in a "
-            "table, with the source of each figure (tracker, or report title and page). "
+            "table, with the source of each figure: its link where the tools give one (the "
+            "tracker's activity_page, or the link the report's citation ends with), otherwise "
+            "where it lives (the report's documents-folder file, or the indicator tracker and "
+            "the row's source). Never make up a link. "
             "Respect the indicator's direction.\n"
             "4. Summarise in three to five sentences, citing sources, and say clearly when the "
             "reports don't explain a result. Note how recently the tracker was updated."
