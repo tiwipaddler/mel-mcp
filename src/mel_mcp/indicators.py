@@ -7,6 +7,7 @@ unusable; cautions mean its figures should be checked against the reports first.
 import re
 from datetime import date
 from pathlib import Path
+from urllib.parse import quote
 
 from mel_mcp.countries import COUNTRY_NAMES, country_code
 from mel_mcp.tables import DataError, modified, number, read_csv
@@ -48,6 +49,13 @@ def counts_things(name: str) -> bool:
 def project_code(indicator_code: str) -> str:
     """The activity identifier an IATI indicator code starts with, e.g. 'XI-IATI-WBTF-P117635'."""
     return indicator_code.split("/R")[0] if "/R" in indicator_code else ""
+
+
+def activity_page(source: str) -> str | None:
+    """The d-portal page for an IATI activity, from a tracker source like 'IATI: <id>'."""
+    if not source.startswith("IATI:") or not (activity := source[5:].strip()):
+        return None
+    return f"https://d-portal.iatistandard.org/ctrack.html#view=act&aid={quote(activity, safe='')}"
 
 
 def project_matches(wanted: str, project: str, indicator_code: str) -> bool:
@@ -338,6 +346,7 @@ class IndicatorTracker:
                 {
                     **{k: row.get(k, "") for k in ("indicator_code", "indicator_name", "unit")},
                     "project": row.get("project", ""),
+                    "activity_page": activity_page(row.get("source", "")),
                     "countries": _countries(row),
                     "periods": 0,
                     "periods_with_actuals": 0,
@@ -452,6 +461,7 @@ class IndicatorTracker:
             "evidence_rule": _evidence_rule(periods),
             "check_against_reports": any(p["cautions"] for p in periods),
             "source": first.get("source"),
+            "activity_page": activity_page(first.get("source", "")),
             "tracker_updated": modified(self.path),
             "data_quality": issues or ["No problems detected."],
             "note": (
@@ -473,6 +483,7 @@ def _project_summary(indicators: list[dict]) -> list[dict]:
             {
                 "project": e["project"],
                 "project_code": project_code(e["indicator_code"]),
+                "activity_page": e["activity_page"],
                 "countries": e["countries"],
                 "usable_indicators": 0,
                 "unusable_indicators": 0,
