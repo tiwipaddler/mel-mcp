@@ -105,7 +105,8 @@ def test_build_writes_nothing_when_a_link_fails(maintainer, capsys):
     choose(pack, "c1.pdf", "a1.pdf")
     with pytest.raises(SystemExit, match="1 link"):
         starter.build(s, pack, opener=the_web(s, "c1.pdf"), pause=0)
-    assert "FAILED: Report a1.pdf" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "Report a1.pdf\n         https://example.org/a1.pdf\n         FAILED: HTTP 404" in out
     assert not (pack / "manifest.csv").exists()
 
 
@@ -157,7 +158,8 @@ def test_load_downloads_reports_and_copies_the_tracker(fresh_copy, capsys):
     lines = out[out.index("Report c1.pdf") :].splitlines()
     # Every report is followed by its link, downloaded or not.
     assert lines[1].strip() == "https://example.org/c1.pdf"
-    assert "skipped (HTTP 404)" in out and "         https://example.org/b1.pdf" in out
+    # The link is shown before the download is tried, and the result goes under it.
+    assert "https://example.org/b1.pdf\n         skipped (HTTP 404)" in out
 
 
 def test_load_never_replaces_your_own_data(fresh_copy):
