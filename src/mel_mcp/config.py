@@ -8,8 +8,9 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # The project folder: MEL_HOME if set, otherwise the repo this file lives in
-# (src/mel_mcp/config.py → two levels up).
-ROOT = Path(os.getenv("MEL_HOME") or Path(__file__).resolve().parents[2])
+# (src/mel_mcp/config.py → two levels up). Made absolute so relative paths below resolve
+# against it once, not twice.
+ROOT = Path(os.getenv("MEL_HOME") or Path(__file__).parents[2]).expanduser().resolve()
 load_dotenv(ROOT / ".env")
 
 
