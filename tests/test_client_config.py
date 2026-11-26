@@ -26,7 +26,7 @@ def test_commands_keep_paths_with_spaces_together(client, monkeypatch):
     monkeypatch.setattr(client_config, "ROOT", "/Users/me/My Projects/mel-mcp")
     words = shlex.split(client_config.render(client))
     assert "MEL_HOME=/Users/me/My Projects/mel-mcp" in words
-    assert words[words.index("--") + 1].endswith("mel-mcp-server")
+    assert words[words.index("--") + 1].endswith(("mel-mcp-server", "mel-mcp-server.exe"))
 
 
 def test_claude_code_options_come_before_the_name():

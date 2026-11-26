@@ -29,7 +29,10 @@ WHERE = {
         "Add this to .vscode/mcp.json in the folder you open in VS Code, "
         "then use Copilot Chat in agent mode."
     ),
-    "gemini": "Add this to ~/.gemini/settings.json, inside its mcpServers section if it has one.",
+    "gemini": (
+        "Add this to ~/.gemini/settings.json at the top level. If the file already has an "
+        "mcpServers section, copy only the mel-evidence entry into it."
+    ),
     "lm-studio": "In LM Studio, open the Program tab, click Edit mcp.json and add this.",
     "other": (
         "Any assistant that can start a local (stdio) MCP server: give it this command and "
