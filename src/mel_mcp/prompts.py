@@ -88,12 +88,15 @@ def register_prompts(mcp: FastMCP) -> None:
         """Report an indicator's performance against target, with explanations."""
         return (
             f"Report on indicator {indicator_code}.\n\n"
-            "1. Call get_indicator and show baseline, target, actual and % of target for each "
-            "usable period in a table. Respect the indicator's direction. If no period is "
-            "usable, say so and why, and don't report the figures as results.\n"
-            "2. Call search_reports with the indicator's name to find explanations for "
-            "under- or over-performance.\n"
-            "3. Summarise in three to five sentences, citing sources, and say clearly when the "
+            "1. Call get_indicator. If no period is usable, say so and why (data_quality), "
+            "and don't report the figures as results.\n"
+            "2. Call search_reports with the indicator's name and project. Look for "
+            "explanations of under- or over-performance, and check the figures of every "
+            "period with cautions. Where a report gives a different figure, use the report's.\n"
+            "3. Show baseline, target, actual and % of target for each usable period in a "
+            "table, with the source of each figure (tracker, or report title and page). "
+            "Respect the indicator's direction.\n"
+            "4. Summarise in three to five sentences, citing sources, and say clearly when the "
             "reports don't explain a result. Note how recently the tracker was updated."
         )
 

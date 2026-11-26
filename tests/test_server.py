@@ -185,6 +185,10 @@ async def test_resources_and_prompts(server, prepared_data):
         }
         prompt = await client.get_prompt("compare_phases", {"topic": "fertiliser use"})
         assert "compare_rounds" in prompt.messages[0].content.text
+        report = await client.get_prompt("indicator_report", {"indicator_code": "WB/R4/I1"})
+        steps = report.messages[0].content.text
+        # Cautioned figures are checked in the reports before the table is drawn.
+        assert steps.index("cautions") < steps.index("table")
 
 
 @pytest.mark.anyio
