@@ -8,7 +8,7 @@ import csv
 
 import pytest
 
-from mel_mcp.indicators import IndicatorTracker
+from mel_mcp.indicators import IndicatorTracker, in_years
 from mel_mcp.tables import DataError
 
 
@@ -385,3 +385,10 @@ def test_projects_with_the_same_name_are_counted_apart(tmp_path):
     out = IndicatorTracker(data).find("")
     assert sorted(p["project_code"] for p in out["projects"]) == ["XM-A-1", "XM-B-2"]
     assert out["projects_with_usable_data"] == 2
+
+
+def test_a_placeholder_end_date_keeps_the_period_whatever_its_start():
+    # All this drama was because a WB project's period started in 2013 and ended in 1900 (issue #6).
+    assert in_years({"period_start": "2013-01-01", "period_end": "1900-12-31"}, 2020)
+    assert in_years({"period_start": "2013-01-01", "period_end": ""}, 2020)
+    assert not in_years({"period_start": "2013-01-01", "period_end": "2018-12-31"}, 2020)
