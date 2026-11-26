@@ -61,7 +61,8 @@ def maintainer(mel_settings, tmp_path):
         HEADER + "\n"
         "K/R1/I1,Farmers trained (Number),unit,1,Irrigation,KE,,,2022-01-01,2024-12-31,100,80,IATI\n"
         "U/R1/I1,Roads built (km),unit,1,Uganda roads,UG,,,2022-01-01,2024-12-31,50,40,IATI\n"
-        "M/R1/I1,Seed sold (t),unit,1,Regional seeds,KE;UG,,,2022-01-01,2024-12-31,9,9,IATI\n"
+        "M/R1/I1,Seed sold (t),unit,1,Seeds,KE;UG,,,2022-01-01,2024-12-31,9,9,IATI\n"
+        "Z/R1/I1,Wells dug,unit,1,Water,KE,,,2022-01-01,2024-12-31,20,15,IATI\n"
     )
     return mel_settings, tmp_path / "pack"
 
@@ -92,8 +93,11 @@ def test_build_writes_the_chosen_reports_in_order(maintainer, capsys):
     assert [r["file"] for r in picked] == ["c1.pdf", "a3.pdf", "b1.pdf"]
     assert list(load_manifest(pack / "manifest.csv")) == ["c1.pdf", "a3.pdf", "b1.pdf"]
     codes = [r["indicator_code"] for r in csv.DictReader(open(pack / "indicators.csv"))]
-    assert codes == ["K/R1/I1", "M/R1/I1"]  # Kenyan and multi-country, not Ugandan
-    assert "https://example.org/a3.pdf" in capsys.readouterr().out
+    # The pack's projects only, Kenyan or multi-country: not Ugandan, not a project with no report.
+    assert codes == ["K/R1/I1", "M/R1/I1"]
+    out = capsys.readouterr().out
+    assert "https://example.org/a3.pdf" in out
+    assert "No indicators in the tracker for: Youth" in out
 
 
 def test_build_writes_nothing_when_a_link_fails(maintainer, capsys):

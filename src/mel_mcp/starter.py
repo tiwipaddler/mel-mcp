@@ -140,6 +140,10 @@ def _passages_per_report(s: Settings) -> dict[str, int]:
     return counts
 
 
+def _project_key(row: dict) -> str:
+    return " ".join(row.get("project", "").lower().split())
+
+
 def read_report_list(path: Path) -> list[str]:
     """The links in reports.txt, in order. Blank lines and lines starting with # are notes."""
     if not path.exists():
@@ -178,8 +182,9 @@ def build(
     pause: float = SITE_GAP_SECONDS,
 ) -> list[dict]:
     """Write the pack from the links in reports.txt, with each report's details from the
-    maintainer's manifest, and the tracker rows for `country`. Every link is downloaded and
-    read first, the way a tester's computer will; if any fails, nothing is written."""
+    maintainer's manifest, and the tracker rows for those reports' projects in `country`.
+    Every link is downloaded and read first, the way a tester's computer will; if any
+    fails, nothing is written."""
     links = read_report_list(pack / REPORT_LIST)
     by_url = {
         meta["url"]: {**meta, "file": source}
@@ -199,7 +204,15 @@ def build(
         raise SystemExit(f"No indicator tracker at {tracker_file}. Run mel-prepare-iati first.")
     code = country_code(country)
     tracker = read_csv(tracker_file)
-    kept = [r for r in tracker if code in r.get("country", "").upper().replace(" ", "").split(";")]
+    # Only the pack's own projects, as an organisation would have reports and indicators for
+    # the same projects. Figures with no report behind them can't be checked.
+    projects = {_project_key(r) for r in picked}
+    kept = [
+        r
+        for r in tracker
+        if _project_key(r) in projects
+        and code in r.get("country", "").upper().replace(" ", "").split(";")
+    ]
 
     print(f"Checking {len(picked)} report link(s) the way a tester's computer will download them")
     pacer = Pacer(pause, opener)
@@ -234,6 +247,9 @@ def build(
     )
     if total:
         print(f"Testers will index about {total} passages.")
+    with_indicators = {_project_key(r) for r in kept}
+    if without := sorted({r["project"] for r in picked if _project_key(r) not in with_indicators}):
+        print("No indicators in the tracker for: " + "; ".join(without))
     return picked
 
 

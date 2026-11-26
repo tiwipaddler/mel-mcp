@@ -4,7 +4,7 @@ Real evidence to try the server with: reports and indicator data from Kenyan agr
 
 - `reports.txt` is the list of links chosen for the pack, with a note on each project.
 - `manifest.csv` lists each report with its project, donor, study phase, year, country and source link.
-- `indicators.csv` holds the projects' targets and actuals, as their funders published them to IATI.
+- `indicators.csv` holds the targets and actuals of the projects in the pack, as their funders published them to IATI. Not every project publishes indicators, so some have reports only.
 
 The reports themselves are not stored here. Most publishers don't allow their reports to be redistributed, so `mel-starter load` (run by `./setup.sh --starter`) downloads each one from its source link onto your computer. Downloads from the same site are spaced 15 seconds apart, because some publishers refuse downloads that come faster, so this takes a few minutes. A refused download is tried once more a minute later. If a link has stopped working, that report is skipped. If a download or the indexing was interrupted, run `./setup.sh --starter` again: it fetches only the reports that are missing and carries on from there.
 
