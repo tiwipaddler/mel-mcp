@@ -130,33 +130,57 @@ def _issues(row: dict, target, actual, achieved, baseline) -> list[str]:
             )
         elif (year := _year(value)) and year < EARLIEST_PLAUSIBLE_YEAR:
             issues.append(
-                f"A period {label} date of {year} looks like a placeholder, not a real date."
+                f"A period {label} date of {year} looks like a placeholder, not a real date. "
+                "Find the period's dates in the reports, or leave the period out."
             )
     if not start and not end:
-        issues.append("A period has no dates, so it can't be placed in time.")
+        issues.append(
+            "A period has no dates, so it can't be placed in time. Find its dates in the reports."
+        )
     for field, parsed in (("target", target), ("actual", actual)):
         raw = row.get(field, "")
         if raw and parsed is None:
-            issues.append(f"The {field} '{raw}' isn't a number the tracker can use.")
+            issues.append(
+                f"The {field} '{raw}' isn't a number the tracker can use. Correct it in the "
+                "tracker, or take the figure from the reports."
+            )
     if target is None and actual is None and not (row.get("target") or row.get("actual")):
-        issues.append("Neither a target nor an actual is reported for this period.")
+        issues.append(
+            "Neither a target nor an actual is reported for this period. Look for both in the "
+            "reports, or leave the period out."
+        )
     elif target not in (None, 0) and actual is None and not row.get("actual"):
-        issues.append("No actual is reported for this period, so progress can't be measured.")
+        issues.append(
+            "No actual is reported for this period, so progress can't be measured. Find the "
+            "result in the reports, or say that none has been reported."
+        )
     if target is not None and target < 0:
-        issues.append("The target is negative, so % of target can't be read. Check its sign.")
+        issues.append(
+            "The target is negative, so % of target can't be read. Check its sign in the tracker."
+        )
     if target == 0 and actual in (None, 0):
-        issues.append("Target and actual are both 0 or missing: probably nothing was reported.")
+        issues.append(
+            "Target and actual are both 0 or missing: probably nothing was reported. Leave the "
+            "period out, and look for the figures in the reports."
+        )
     elif target == 0:
-        issues.append("The target is 0, so % of target can't be calculated.")
+        issues.append(
+            "The target is 0, so % of target can't be calculated. Find the target in the reports."
+        )
     if target is None and actual is not None:
-        issues.append("An actual is reported without a target.")
+        issues.append(
+            "An actual is reported without a target. Ask the publisher for a target, or find it "
+            "in the reports."
+        )
     if achieved is not None and not 0 <= achieved <= MAX_PCT_OF_TARGET:
         issues.append(
-            f"% of target is {achieved}: check the data (wrong units or cumulative totals?)."
+            f"% of target is {achieved}: check the units, and whether a figure is a cumulative "
+            "total, in the reports."
         )
     if baseline not in (None, 0) and actual == baseline:
         issues.append(
-            "The actual equals the baseline, so it may be the baseline repeated, not a result."
+            "The actual equals the baseline, so it may be the baseline repeated, not a result. "
+            "Find the period's result in the reports."
         )
     small_percentage = row.get("unit") == "percentage" and max(target or 0, actual or 0) <= 100
     if (
@@ -167,7 +191,7 @@ def _issues(row: dict, target, actual, achieved, baseline) -> list[str]:
     ):
         issues.append(
             f"The actual {actual} isn't a whole number, but this indicator counts things: "
-            "the figure is probably estimated or miscalculated."
+            "the figure is probably estimated or miscalculated. Find the figure in the reports."
         )
     return issues
 

@@ -337,12 +337,15 @@ def _one_period(tmp_path, start, end, target, actual, baseline=""):
         ("400", "", "No actual is reported"),
         ("", "", "Neither a target nor an actual"),
         ("-400", "300", "target is negative"),
+        ("", "120", "An actual is reported without a target"),
     ],
 )
 def test_unusable_periods_always_say_why(tmp_path, target, actual, expected):
     out = _one_period(tmp_path, "2022-01-01", "2022-12-31", target, actual)
     assert out["usable"] is False
     assert any(expected in issue for issue in out["data_quality"])
+    # Every reason ends with what to do about it.
+    assert all(" in the reports" in i or "tracker" in i for i in out["data_quality"])
 
 
 def test_a_baseline_that_isnt_a_number_counts_as_missing(tmp_path):
