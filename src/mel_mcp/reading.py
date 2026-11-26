@@ -171,7 +171,9 @@ def load_odt(path: Path, doc_meta: dict) -> list[Chunk]:
     pages: list[list[str]] = [[]]
     for block in blocks:
         if block is None:
-            if pages[-1]:
+            # A break before any text doesn't start a new page. After that every break
+            # does, so a blank page between two breaks keeps the page numbers right.
+            if len(pages) > 1 or pages[0]:
                 pages.append([])
         else:
             pages[-1].append(block)

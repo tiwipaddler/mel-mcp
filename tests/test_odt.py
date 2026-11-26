@@ -173,3 +173,47 @@ def test_files_encoding_huge_runs_of_spaces_are_refused(tmp_path):
     write_odt(path, "<text:p>a<text:s text:c='999999999'/>b</text:p>")
     with pytest.raises(ValueError, match="too many spaces"):
         load_odt(path, {"title": "Bomb"})
+
+
+def test_a_blank_page_between_two_breaks_is_counted(tmp_path):
+    path = tmp_path / "blank.odt"
+    write_odt(
+        path,
+        "<text:p>Before</text:p><text:soft-page-break/><text:soft-page-break/>"
+        "<text:p>After</text:p>",
+    )
+    pages = load_odt(path, {"title": "Blank"})
+    assert [(p.text, p.metadata["page_label"]) for p in pages] == [
+        ("Before", "1"),
+        ("", "2"),
+        ("After", "3"),
+    ]
+
+
+def test_a_break_before_any_text_keeps_it_on_page_one(tmp_path):
+    path = tmp_path / "lead.odt"
+    write_odt(path, "<text:p><text:soft-page-break/>Text</text:p>")
+    [page] = load_odt(path, {"title": "Lead"})
+    assert page.text == "Text"
+
+
+def _spaces(n: int) -> str:
+    return f"<text:p>a<text:s text:c='{n}'/>b</text:p>"
+
+
+def _in_a_table(paragraph: str) -> str:
+    return (
+        "<table:table><table:table-row><table:table-cell>"
+        f"{paragraph}</table:table-cell></table:table-row></table:table>"
+    )
+
+
+def test_the_space_limit_covers_the_whole_document(tmp_path):
+    path = tmp_path / "split-bomb.odt"
+    write_odt(path, _spaces(600_000) + _in_a_table(_spaces(400_001)))
+    with pytest.raises(ValueError, match="too many spaces"):
+        load_odt(path, {"title": "Split bomb"})
+
+    path = tmp_path / "at-the-limit.odt"
+    write_odt(path, _spaces(600_000) + _in_a_table(_spaces(400_000)))
+    assert load_odt(path, {"title": "At the limit"})
