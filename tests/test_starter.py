@@ -149,7 +149,11 @@ def test_load_downloads_reports_and_copies_the_tracker(fresh_copy, capsys):
     assert set(load_manifest(s.manifest_file)) == {"c1.pdf", "a1.pdf"}
     assert (s.docs_dir / "c1.pdf").read_bytes().startswith(b"%PDF")
     assert (s.data_dir / "indicators.csv").read_text() == (pack / "indicators.csv").read_text()
-    assert "skipped (HTTP 404)" in capsys.readouterr().out
+    out = capsys.readouterr().out.split("Checking")[-1]
+    lines = out[out.index("Report c1.pdf") :].splitlines()
+    # Every report is followed by its link, downloaded or not.
+    assert lines[1].strip() == "https://example.org/c1.pdf"
+    assert "skipped (HTTP 404)" in out and "         https://example.org/b1.pdf" in out
 
 
 def test_load_never_replaces_your_own_data(fresh_copy):

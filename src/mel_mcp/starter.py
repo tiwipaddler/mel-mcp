@@ -75,18 +75,21 @@ def load(
     rows = read_csv(pack / "manifest.csv")
     entries = []
     for i, row in enumerate(rows, 1):
+        # Each link is shown so you can open the report at its source and check it yourself.
         target = _downloaded(s.docs_dir / row["file"])
         if target is None:
             try:
                 data, kind = download_document(row["url"], opener)
             except SkipDocument as exc:
                 print(f"  [{i}/{len(rows)}] {row['title'][:60]}: skipped ({exc})")
+                print(f"         {row['url']}")
                 continue
             target = (s.docs_dir / row["file"]).with_suffix(f".{kind}")
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(data)
             time.sleep(pause)
         print(f"  [{i}/{len(rows)}] {row['title'][:60]}")
+        print(f"         {row['url']}")
         entries.append({**row, "file": target.relative_to(s.docs_dir).as_posix()})
 
     s.manifest_file.parent.mkdir(parents=True, exist_ok=True)
@@ -94,6 +97,7 @@ def load(
     s.data_dir.mkdir(parents=True, exist_ok=True)
     shutil.copy(pack / "indicators.csv", tracker)
     print(f"\n{len(entries)} of {len(rows)} report(s) downloaded; indicator tracker copied.")
+    print("Open any link above to see a report at its source.")
     return len(entries)
 
 
