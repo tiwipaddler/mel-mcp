@@ -16,7 +16,7 @@ cd mel-mcp
 ./setup.sh --starter
 ```
 
-This installs everything, runs the tests and loads the Kenya starter pack: about 25 real reports from Kenyan agriculture projects since 2020, downloaded from their publishers, and those projects' indicator data. The pack comes with the repo (`starter/kenya-agriculture`), so there is nothing extra to download first. As each report downloads, its link is shown, so you can open it at the source and check the answers against it. Indexing the reports takes from a few minutes on a recent laptop to about half an hour on an older one; the progress shows the time left.
+This installs everything, runs the tests and loads the Kenya starter pack: 25 real reports from 10 Kenyan agriculture projects since 2020, downloaded from their publishers, and those projects' indicator data. The pack comes with the repo (`starter/kenya-agriculture`), so there is nothing extra to download first. As each report downloads, its link is shown, so you can open it at the source and check the answers against it. Indexing the reports takes from a few minutes on a recent laptop to about half an hour on an older one; the progress shows the time left.
 
 Then connect your assistant ([step 6](#6-connect-an-assistant)) and ask:
 

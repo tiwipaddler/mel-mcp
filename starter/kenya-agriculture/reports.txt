@@ -1,0 +1,50 @@
+# Reports in the Kenya starter pack, one link per line, in the order they load.
+# Each link was downloaded and read by link-check on 26 November 2026. To change the pack,
+# edit this list and run `mel-starter build`; it checks every link again before writing.
+# The African Development Bank and IFAD are left out: their sites refuse some or all
+# downloads that don't come from a web browser.
+
+# Kenya Water Security and Climate Resilience Project (World Bank). Has indicator data.
+https://documents.worldbank.org/curated/en/099122425102515384/pdf/BOSIB-24e62aba-6021-41bf-82e8-bc2d425ba9ef.pdf
+https://documents.worldbank.org/curated/en/099051526122584470/pdf/P117635-9bf7728d-7c1c-44c3-ba0a-c460082a1291.pdf
+https://documents.worldbank.org/curated/en/099041625113516227/pdf/P117635-5ee50c63-8485-435c-be95-67eb50bffc19.pdf
+http://documents.worldbank.org/curated/en/099052624224539467/pdf/P1176351c56d420981b5021dd82f7d1e3ee.pdf
+http://documents.worldbank.org/curated/en/099110423052036368/pdf/P11763508669340d00b2d70cc69f10abc2a.pdf
+
+# Small-scale irrigation, Mount Kenya (KfW): ex-post evaluation, English version
+https://www.kfw-entwicklungsbank.de/PDF/Evaluierung/Ergebnisse-und-Publikationen/PDF-Dokumente-E-K_EN/Kenia_MountKenya_2020_E.pdf
+
+# KCB and multi-party guarantees (Sida): evaluation
+http://cdn.sida.se/app/uploads/2021/09/29142830/DE2021_29_62428en.pdf
+
+# AgriGRADE Center of Excellence: annual reports 2024 and 2025
+https://aidstream.s3.us-west-2.amazonaws.com/documents/Annual-report-2024-AgriGRADE-20250628070612.pdf
+https://aidstream.s3.us-west-2.amazonaws.com/documents/AgriGRADE-annual-report-2025-20260715080703.pdf
+
+# Sustainable Cooling and Cold Chain Solutions: annual review 2023
+https://iatipublisher-prod.s3.amazonaws.com/document-link/414/Sustainable-Cooling-and-Cold-Chain-Solutions_Annual-Review_Defra_V7_DD-Cleared_Redacted-202310021010061745547631.pdf
+
+# Commercial Agriculture for Smallholders and Agribusiness (FCDO): annual reviews
+http://iati.fcdo.gov.uk/iati_documents/S20511835.odt
+http://iati.fcdo.gov.uk/iati_documents/D0005587.odt
+http://iati.fcdo.gov.uk/iati_documents/D0003522.odt
+http://iati.fcdo.gov.uk/iati_documents/D0001230.odt
+
+# Strategic Partnership on Agriculture and Food Systems for Nutrition (FCDO): annual reviews
+http://iati.fcdo.gov.uk/iati_documents/S20442022.odt
+http://iati.fcdo.gov.uk/iati_documents/D0006067.odt
+http://iati.fcdo.gov.uk/iati_documents/D0003260.odt
+http://iati.fcdo.gov.uk/iati_documents/58690385.odt
+
+# Kenya Market Assistance Programme (FCDO): completion review and annual review
+http://iati.fcdo.gov.uk/iati_documents/D0000907.odt
+http://iati.fcdo.gov.uk/iati_documents/53175005.odt
+
+# Africa Technology and Innovation Partnerships (FCDO): annual reviews
+http://iati.fcdo.gov.uk/iati_documents/S30070438.odt
+http://iati.fcdo.gov.uk/iati_documents/D0005140.odt
+
+# Africa Regional Climate and Nature Programme (FCDO): evaluation, management response, annual review
+http://iati.fcdo.gov.uk/iati_documents/S30080860.odt
+http://iati.fcdo.gov.uk/iati_documents/S30080859.odt
+http://iati.fcdo.gov.uk/iati_documents/S30080836.odt
