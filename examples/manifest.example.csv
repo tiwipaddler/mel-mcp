@@ -1,0 +1,3 @@
+file,title,project,donor,implementing_partner,study_phase,reporting_year,country,source_type,sample_size,url
+EXAMPLE_baseline_report.pdf,EXAMPLE Baseline Evaluation Report,EXAMPLE Smallholder Programme,EXAMPLE Donor,EXAMPLE Partner,baseline,2021,Kenya,evaluation_report,1200,https://example.org/baseline
+EXAMPLE_fgd_midline.pdf,EXAMPLE Midline Focus Group Transcripts,EXAMPLE Smallholder Programme,EXAMPLE Donor,EXAMPLE Partner,midline,2022,Kenya,fgd_transcript,,https://example.org/fgd

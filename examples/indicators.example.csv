@@ -1,0 +1,5 @@
+indicator_code,indicator_name,unit,ascending,project,country,baseline_year,baseline_value,period_start,period_end,target,actual,source
+EXAMPLE-001/R1/I1,Farmers trained in improved practices (Number),unit,1,EXAMPLE Smallholder Programme,KE,2021,0,2022-01-01,2022-12-31,2000,1650,EXAMPLE annual report 2022
+EXAMPLE-001/R1/I1,Farmers trained in improved practices (Number),unit,1,EXAMPLE Smallholder Programme,KE,2021,0,2023-01-01,2023-12-31,4000,3720,EXAMPLE annual report 2023
+EXAMPLE-001/R2/I1,Average maize yield (kg per acre),unit,1,EXAMPLE Smallholder Programme,KE,2021,500,2023-01-01,2023-12-31,700,640,EXAMPLE endline survey
+EXAMPLE-001/R3/I1,Post-harvest loss (%),percentage,0,EXAMPLE Smallholder Programme,KE;UG,2021,30,2023-01-01,2023-12-31,20,18,EXAMPLE endline survey

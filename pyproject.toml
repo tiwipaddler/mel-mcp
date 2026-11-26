@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mel-evidence-mcp"
+version = "0.1.0"
+description = "MCP server giving AI assistants safe, cited access to MEL reports, survey data and indicators"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+dependencies = [
+    "mcp>=1.26,<2",          # 2.x renamed FastMCP to MCPServer
+    "chromadb>=1.5",
+    "sentence-transformers>=2.7",
+    "pypdf>=6.21.4",  # earlier releases have known security advisories
+    "duckdb>=1.1",
+    "pandas>=2.2",
+    "python-dotenv>=1.0",
+    "langgraph>=1.0",
+]
+
+[project.optional-dependencies]
+claude = ["anthropic>=0.40"]  # Claude-written drift summaries
+dev = ["pytest>=8", "ruff>=0.15"]
+
+[project.scripts]
+mel-mcp-server = "mel_mcp.server:main"
+mel-ingest = "mel_mcp.ingest:main"
+mel-search = "mel_mcp.search:main"
+mel-prepare-survey = "mel_mcp.prepare_survey:main"
+mel-prepare-iati = "mel_mcp.prepare_iati:main"
+mel-fetch-iati = "mel_mcp.fetch_iati:main"
+mel-download-docs = "mel_mcp.download_docs:main"
+mel-drift = "mel_mcp.agents.drift_agent:main"
+mel-mcp-config = "mel_mcp.client_config:main"
+mel-starter = "mel_mcp.starter:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["mel_mcp"]
+
+[tool.ruff.lint.per-file-ignores]
+# Test data rows are easier to read on one line.
+"tests/*" = ["E501"]
