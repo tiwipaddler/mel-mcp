@@ -8,7 +8,7 @@ import csv
 
 import pytest
 
-from mel_mcp.indicators import IndicatorTracker
+from mel_mcp.indicators import IndicatorTracker, in_years
 from mel_mcp.tables import DataError
 
 
@@ -385,3 +385,23 @@ def test_projects_with_the_same_name_are_counted_apart(tmp_path):
     out = IndicatorTracker(data).find("")
     assert sorted(p["project_code"] for p in out["projects"]) == ["XM-A-1", "XM-B-2"]
     assert out["projects_with_usable_data"] == 2
+
+
+def test_a_placeholder_end_date_keeps_the_period_whatever_its_start():
+    # All this drama was because a WB project's period started in 2013 and ended in 1900 (issue #6).
+    assert in_years({"period_start": "2013-01-01", "period_end": "1900-12-31"}, 2020)
+    assert in_years({"period_start": "2013-01-01", "period_end": ""}, 2020)
+    assert not in_years({"period_start": "2013-01-01", "period_end": "2018-12-31"}, 2020)
+
+
+def test_a_period_with_no_end_date_is_not_usable(tmp_path):
+    out = _one_period(tmp_path, "2013-01-01", "", "400", "300")
+    assert out["usable"] is False
+    assert "no end date" in out["data_quality"][0]
+
+
+def test_an_impossible_end_date_is_reported_not_filtered_out(tmp_path):
+    _one_period(tmp_path, "2018-01-01", "2018-02-30", "400", "300")
+    out = IndicatorTracker(tmp_path / "data").get("P/R1/I1", year_from=2020)
+    assert out["usable"] is False
+    assert "'2018-02-30' isn't a real date" in " ".join(out["data_quality"])

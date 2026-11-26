@@ -65,15 +65,14 @@ def _year(date: str) -> int | None:
 def in_years(row: dict, year_from: int | None) -> bool:
     """Keep periods that end in or after year_from.
 
-    Placeholder dates count as unknown, so those periods are kept and later marked unusable.
-    Otherwise a project with placeholder dates would vanish instead of showing up as
-    'in the tracker, nothing usable'.
+    A missing, impossible or placeholder end date counts as unknown, so the period is kept
+    and later marked unusable. Otherwise a project with placeholder end dates would vanish
+    instead of showing up as 'in the tracker, nothing usable'.
     """
-    if not year_from:
+    end = row.get("period_end", "")
+    if not year_from or not _is_date(end) or _year(end) < EARLIEST_PLAUSIBLE_YEAR:
         return True
-    years = [_year(row.get("period_end", "")), _year(row.get("period_start", ""))]
-    plausible = [y for y in years if y and y >= EARLIEST_PLAUSIBLE_YEAR]
-    return not plausible or plausible[0] >= year_from
+    return _year(end) >= year_from
 
 
 def period_key(row: dict) -> tuple[str, str, str]:
@@ -137,6 +136,12 @@ def _issues(row: dict, target, actual, achieved, baseline) -> list[str]:
         issues.append(
             "A period has no dates, so it can't be placed in time. Find its dates in the reports."
         )
+    elif not end:
+        issues.append(
+            "A period has no end date, so it can't be placed in time. Find the end date in the "
+            "reports, or leave the period out."
+        )
+
     for field, parsed in (("target", target), ("actual", actual)):
         raw = row.get(field, "")
         if raw and parsed is None:
