@@ -136,6 +136,12 @@ def _issues(row: dict, target, actual, achieved, baseline) -> list[str]:
         issues.append(
             "A period has no dates, so it can't be placed in time. Find its dates in the reports."
         )
+    elif not end:
+        issues.append(
+            "A period has no end date, so it can't be placed in time. Find the end date in the "
+            "reports, or leave the period out."
+        )
+
     for field, parsed in (("target", target), ("actual", actual)):
         raw = row.get(field, "")
         if raw and parsed is None:

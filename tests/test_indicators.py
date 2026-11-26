@@ -392,3 +392,9 @@ def test_a_placeholder_end_date_keeps_the_period_whatever_its_start():
     assert in_years({"period_start": "2013-01-01", "period_end": "1900-12-31"}, 2020)
     assert in_years({"period_start": "2013-01-01", "period_end": ""}, 2020)
     assert not in_years({"period_start": "2013-01-01", "period_end": "2018-12-31"}, 2020)
+
+
+def test_a_period_with_no_end_date_is_not_usable(tmp_path):
+    out = _one_period(tmp_path, "2013-01-01", "", "400", "300")
+    assert out["usable"] is False
+    assert "no end date" in out["data_quality"][0]
