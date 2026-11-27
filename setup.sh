@@ -91,9 +91,9 @@ Setup finished.
 Next:
   1. In every new terminal, activate the environment first:
        source venv/bin/activate
-  2. Connect your assistant (see README step 6), for example:
+  2. Connect your assistant (see guide/SETUP.md), for example:
        mel-mcp-config claude-code
 EOF
 if [ "$STARTER" = no ]; then
-  echo "  3. Load your data (README step 3), or try the Kenya starter pack: ./setup.sh --starter"
+  echo "  3. Load your data (see guide/YOUR_DATA.md), or try the Kenya starter pack: ./setup.sh --starter"
 fi

@@ -8,6 +8,7 @@ from mcp.shared.memory import create_connected_server_and_client_session
 
 from mel_mcp.documents import DocumentIndex, build_index
 from mel_mcp.metadata import load_manifest
+from mel_mcp.prompts import ANSWER_FORMAT
 from mel_mcp.reading import Chunk, chunk_pages
 from mel_mcp.server import create_server
 
@@ -191,6 +192,19 @@ async def test_resources_and_prompts(server, prepared_data):
         steps = report.messages[0].content.text
         # Cautioned figures are checked in the reports before the table is drawn.
         assert steps.index("cautions") < steps.index("table")
+
+
+@pytest.mark.anyio
+async def test_every_answer_gets_the_same_layout_without_being_asked(server):
+    assert ANSWER_FORMAT in server.instructions
+    async with create_connected_server_and_client_session(server) as client:
+        for name, args in (
+            ("compare_phases", {"topic": "fertiliser use"}),
+            ("indicator_report", {"indicator_code": "WB/R4/I1"}),
+            ("evidence_summary", {"country": "Kenya", "question": "Why were projects late?"}),
+        ):
+            text = (await client.get_prompt(name, args)).messages[0].content.text
+            assert text.endswith(ANSWER_FORMAT), name
 
 
 @pytest.mark.anyio
