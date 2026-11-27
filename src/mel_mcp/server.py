@@ -20,11 +20,12 @@ from mel_mcp.countries import canonical_country
 from mel_mcp.documents import DocumentIndex, build_filter, citation, matches
 from mel_mcp.indicators import IndicatorTracker
 from mel_mcp.metadata import SourceType, StudyPhase, load_manifest, vocabulary
-from mel_mcp.prompts import register_prompts
+from mel_mcp.prompts import ANSWER_FORMAT, register_prompts
 from mel_mcp.surveys import Stat, SurveyData
 from mel_mcp.tables import DataError
 
-INSTRUCTIONS = """\
+INSTRUCTIONS = (
+    """\
 Evidence from development programmes' monitoring, evaluation and learning (MEL):
 evaluation reports, briefs and transcripts (search_reports), survey datasets
 (list_datasets, describe_dataset, aggregate, compare_rounds) and an indicator
@@ -49,7 +50,11 @@ tracker (find_indicators, get_indicator).
   usable indicators, and get_indicator marks each period usable or not and gives
   an evidence_rule to follow. Never work out a shortfall from flagged figures;
   name the project and say why its figures aren't usable instead.
-- If the tools return nothing relevant, say the evidence doesn't cover it."""
+- If the tools return nothing relevant, say the evidence doesn't cover it.
+
+"""
+    + ANSWER_FORMAT
+)
 
 READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, openWorldHint=False)
 YearFrom = Annotated[

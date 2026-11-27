@@ -4,6 +4,23 @@ from mcp.server.fastmcp import FastMCP
 
 from mel_mcp.countries import COUNTRY_NAMES, canonical_country, country_code
 
+# How every written answer is laid out, so users don't have to ask for it. Part of the server
+# instructions and of each prompt, so it reaches every assistant, not only Claude.
+ANSWER_FORMAT = """\
+How to write answers, so a busy programme manager can read and check them:
+- Start with a short answer: three to five bullet points.
+- Then one section per theme or finding, each with two or three cited examples.
+- Where tracker figures and reports are compared, use a table, with what the tracker says, \
+what the reports say, and the source in the same row.
+- Put the source straight after each claim, e.g. ([Report title, p. 12](link)). For a source \
+with no link, give its title and where it lives instead.
+- Use plain words, short sentences and short paragraphs. Spell out each abbreviation the first \
+time it's used.
+- End with a Sources list of everything cited.
+- If you can save files and the answer runs to more than a few paragraphs, also save it as a \
+Markdown (.md) file named after the question, and say where it is.
+A short factual question only needs a short answer with its sources."""
+
 EVIDENCE_STEPS = """\
 1. Search the reports from several angles (at least four search_reports calls).{filters} Keep \
 examples from the country asked about; label any passage about another country, or leave it out.
@@ -83,7 +100,8 @@ def register_prompts(mcp: FastMCP) -> None:
             "3. Present a short comparison: what changed, what stayed the same, and where "
             "evidence is missing for one phase.\n"
             "4. Cite every point with title, page, phase and n. Flag renamed or recoded "
-            "variables and differences in sample or method that weaken the comparison."
+            "variables and differences in sample or method that weaken the comparison.\n\n"
+            + ANSWER_FORMAT
         )
 
     @mcp.prompt()
@@ -103,7 +121,8 @@ def register_prompts(mcp: FastMCP) -> None:
             "the row's source). Never make up a link. "
             "Respect the indicator's direction.\n"
             "4. Summarise in three to five sentences, citing sources, and say clearly when the "
-            "reports don't explain a result. Note how recently the tracker was updated."
+            "reports don't explain a result. Note how recently the tracker was updated.\n\n"
+            + ANSWER_FORMAT
         )
 
     @mcp.prompt()
@@ -126,4 +145,5 @@ def register_prompts(mcp: FastMCP) -> None:
         )
         first = "".join(f"FIRST: {p}\n" for p in problems)
         steps = EVIDENCE_STEPS.format(filters=filter_text)
-        return f"{first}Question: {question or '(not given yet)'}\n\n{steps}"
+        question_line = f"Question: {question or '(not given yet)'}"
+        return f"{first}{question_line}\n\n{steps}\n\n{ANSWER_FORMAT}"
