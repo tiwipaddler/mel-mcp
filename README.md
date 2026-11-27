@@ -1,5 +1,7 @@
 # MEL Evidence MCP
 
+[![Tests](https://github.com/tiwipaddler/mel-mcp/actions/workflows/tests.yml/badge.svg)](https://github.com/tiwipaddler/mel-mcp/actions/workflows/tests.yml)
+
 An MCP server that lets an AI assistant such as Claude answer questions about a development programme's evidence: evaluation reports, survey data and indicator targets. Every claim comes with a citation, the assistant can only see totals and averages from survey data (never individual answers), and indicator figures are checked for data problems before they are used.
 
 Built for monitoring, evaluation and learning (MEL) teams. Runs on your own computer, with your own files.
@@ -520,9 +522,9 @@ data_sources.md        public documents and datasets to try it with
 
 ### Tests
 
-`pytest -q` runs 125 tests without API keys, model downloads or network access, using a fake search model and synthetic data with planted problems. They cover search filters and citations; that names, phone numbers and IDs can never be queried; small-group suppression; query timeouts; drift detection; the audit log; IATI fetching against a fake API; downloading reports; incremental indexing; OpenDocument files; country spellings; indicator data checks and cautions; and the server through a real MCP client session.
+`pytest -q` runs the tests without API keys, model downloads or network access, using a fake search model and synthetic data with planted problems. They cover search filters and citations; that names, phone numbers and IDs can never be queried; small-group suppression; query timeouts; drift detection; the audit log; IATI fetching against a fake API; downloading reports; incremental indexing; OpenDocument files; country spellings; indicator data checks and cautions; and the server through a real MCP client session.
 
-Code style is set by ruff. Before opening a pull request, run `ruff format` and `ruff check` from the project folder.
+Code style is set by ruff. Before opening a pull request, run `ruff format` and `ruff check` from the project folder. GitHub runs the same checks and the tests on every push and pull request (`.github/workflows/tests.yml`).
 
 ### Known limitations
 
